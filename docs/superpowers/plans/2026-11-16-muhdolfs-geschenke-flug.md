@@ -764,7 +764,7 @@ In `index.html`, Block `game-logic`, die vorläufige `buildRoute` durch Folgende
     for (let i = 0; i < gruppen.length && gifts.length < GIFT_TOTAL; i++) {
       const anzahl = Math.min(gruppen[i], GIFT_TOTAL - gifts.length);
       gifts.push(...gruppeSetzen(obstacles, rnd, ta, anzahl, klassen[i]));
-      ta += 9.2;
+      ta += 10;                               // 14 Gruppen bis kurz vor das Ziel
     }
 
     return { obstacles, gifts };
