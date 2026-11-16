@@ -93,3 +93,82 @@ test('die Hindernisse werden abwechselnd vom Boden und von der Decke gesetzt', (
   const arten = new Set(strecke.obstacles.map((o) => o.from));
   assert.deepEqual([...arten].sort(), ['boden', 'decke']);
 });
+
+/**
+ * Weg, den Muhdolf in der Zeit T aus dem Stand hoechstens zuruecklegen kann.
+ * Steigen ist die langsamere Richtung (Auftrieb minus Schwerkraft), darum
+ * rechnet die Schranke damit -- wer sie besteht, schafft es in beide Richtungen.
+ */
+function hub(T) {
+  const a = L.PHYS.lift - L.PHYS.gravity;
+  const v = L.PHYS.maxRise;
+  const tv = v / a;
+  return T <= tv ? 0.5 * a * T * T : v * T - (v * v) / (2 * a);
+}
+
+test('jedes Geschenk hat eine Ankunftszeit', () => {
+  for (const g of strecke.gifts) {
+    assert.equal(typeof g.ta, 'number', `Geschenk bei s=${g.s} hat kein ta`);
+    assert.ok(g.ta > 0 && g.ta < L.TOTAL_SECONDS, `ta=${g.ta} liegt ausserhalb des Fluges`);
+  }
+});
+
+test('aufeinanderfolgende Geschenke sind nacheinander erreichbar', () => {
+  // Die Toleranz beim Einsammeln: Geschenkradius plus halbe Trefferhoehe.
+  const tol = L.GIFT_R + (L.COW.h * L.HIT_SHRINK) / 2;
+  const sortiert = [...strecke.gifts].sort((a, b) => a.s - b.s);
+  for (let i = 1; i < sortiert.length; i++) {
+    const a = sortiert[i - 1];
+    const b = sortiert[i];
+    const T = (b.s - a.s) / L.rateFor(b.stage);
+    const noetig = Math.max(0, Math.abs(b.y - a.y) - 2 * tol);
+    assert.ok(noetig <= hub(T) + 1e-9,
+      `Von s=${a.s} (y=${a.y}) nach s=${b.s} (y=${b.y}): ${noetig.toFixed(1)} Einheiten ` +
+      `in ${T.toFixed(3)} s noetig, moeglich sind nur ${hub(T).toFixed(1)}`);
+  }
+});
+
+test('zwischen zwei Hindernissen ist der noetige Hoehenwechsel fliegbar', () => {
+  const sortiert = [...strecke.obstacles].sort((a, b) => a.s - b.s);
+  for (let i = 1; i < sortiert.length; i++) {
+    const a = sortiert[i - 1];
+    const b = sortiert[i];
+    // Mitte der jeweils freien Luecke -- dort fliegt ein vernuenftiger Spieler
+    const mitteVon = (o) => o.from === 'boden'
+      ? (L.FIELD.groundY - o.h) / 2
+      : o.h + (L.FIELD.groundY - o.h) / 2;
+    const T = (b.s - a.s) / L.rateFor(b.stage);
+    const noetig = Math.abs(mitteVon(b) - mitteVon(a));
+    assert.ok(noetig <= hub(T) + 1e-9,
+      `Von Hindernis s=${a.s} nach s=${b.s}: ${noetig.toFixed(1)} Einheiten ` +
+      `in ${T.toFixed(3)} s noetig, moeglich sind nur ${hub(T).toFixed(1)}`);
+  }
+});
+
+test('an den Etappengrenzen liegen auch keine Geschenke', () => {
+  for (let k = 1; k < L.STAGES.length; k++) {
+    const grenze = k * L.STAGE_SECONDS;
+    const stoerer = strecke.gifts.filter((g) => g.ta >= grenze && g.ta <= grenze + L.CLEAR_SPAN);
+    assert.equal(stoerer.length, 0,
+      `Bei Etappengrenze ${grenze} s liegen ${stoerer.length} Geschenke hinter der Einblendung`);
+  }
+});
+
+test('riskante Geschenke liegen naeher am Hindernis als bequeme', () => {
+  const abstandZumHindernis = (g) => {
+    let nah = Infinity;
+    for (const o of strecke.obstacles) {
+      if (Math.abs(o.s - g.s) > o.w / 2 + L.GIFT_R + 40) continue;
+      const kante = o.from === 'boden' ? L.FIELD.groundY - o.h : o.h;
+      nah = Math.min(nah, Math.abs(g.y - kante));
+    }
+    return nah;
+  };
+  const je = (k) => strecke.gifts.filter((g) => g.klasse === k)
+    .map(abstandZumHindernis).filter((d) => Number.isFinite(d));
+  const riskant = je('riskant');
+  assert.ok(riskant.length >= 10, `nur ${riskant.length} riskante Geschenke an einem Hindernis`);
+  const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+  assert.ok(median(riskant) <= 45,
+    `Median-Abstand der riskanten Geschenke ist ${median(riskant)} -- das ist kein Risiko`);
+});

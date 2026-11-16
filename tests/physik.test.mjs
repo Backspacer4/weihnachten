@@ -68,3 +68,16 @@ test('dieselbe Eingabefolge ergibt denselben Zustand', () => {
   };
   assert.deepEqual(lauf(), lauf());
 });
+
+test('zwei Runden auf derselben Streckeninstanz verlaufen gleich', () => {
+  // createState teilt das obstacles-Feld per Referenz und kopiert nur die
+  // Geschenke. Wuerde step die Strecke veraendern, verliefe die zweite Runde
+  // anders als die erste -- und die Punktzahlen waeren nicht vergleichbar.
+  const strecke = L.buildRoute();
+  const runde = () => {
+    const z = L.createState(strecke);
+    for (let i = 0; i < 8000; i++) L.step(z, z.cowY > 270, L.STEP);
+    return [z.t, z.s, z.cowY, z.vy, z.hearts, z.giftsTaken, z.score, z.phase, z.stage];
+  };
+  assert.deepEqual(runde(), runde());
+});

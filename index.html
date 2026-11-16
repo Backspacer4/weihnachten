@@ -186,15 +186,18 @@ const GameLogic = (() => {
       }
     }
 
-    // Geschenke
-    const kuhG = cowBox(zustand);
-    for (const g of zustand.gifts) {
-      if (g.taken) continue;
-      if (Math.abs(g.s - (zustand.s + COW.x)) > GIFT_R + COW.w) continue;
-      const kasten = { x0: g.s - GIFT_R, x1: g.s + GIFT_R, y0: g.y - GIFT_R, y1: g.y + GIFT_R };
-      if (!ueberlappt(kuhG, kasten)) continue;
-      g.taken = true;
-      zustand.giftsTaken += 1;
+    // Geschenke -- nur solange sie noch fliegt. Ohne diese Bedingung sammelte
+    // der Absturzschritt noch ein, anders als die Hindernis-Schleife darueber.
+    if (zustand.phase === 'fliegt') {
+      const kuhG = cowBox(zustand);
+      for (const g of zustand.gifts) {
+        if (g.taken) continue;
+        if (Math.abs(g.s - (zustand.s + COW.x)) > GIFT_R + COW.w) continue;
+        const kasten = { x0: g.s - GIFT_R, x1: g.s + GIFT_R, y0: g.y - GIFT_R, y1: g.y + GIFT_R };
+        if (!ueberlappt(kuhG, kasten)) continue;
+        g.taken = true;
+        zustand.giftsTaken += 1;
+      }
     }
 
     const etappe = Math.min(STAGES.length - 1, Math.floor(zustand.t / STAGE_SECONDS));
@@ -203,7 +206,9 @@ const GameLogic = (() => {
       zustand.bannerLeft = BANNER;
     }
 
-    if (zustand.t >= TOTAL_SECONDS) {
+    // Nur wer noch fliegt, kommt an. Ein Absturz im letzten Zeitschritt bleibt
+    // ein Absturz -- sonst gaebe es Zielbildschirm und Zielbonus fuer ihn.
+    if (zustand.phase === 'fliegt' && zustand.t >= TOTAL_SECONDS) {
       zustand.t = TOTAL_SECONDS;        // genau abschneiden, sonst stimmt die Obergrenze nicht
       zustand.phase = 'ziel';
     }
@@ -261,6 +266,17 @@ const GameLogic = (() => {
     return false;
   }
 
+  /** Die naechste Zeit ab ta, die in keinem freizuhaltenden Abschnitt liegt. */
+  function nachDemFreienAbschnitt(ta) {
+    let t = ta;
+    for (let k = 1; k < STAGES.length; k++) {
+      const grenze = k * STAGE_SECONDS;
+      const bis = grenze + CLEAR_SPAN + 0.4;
+      if (t >= grenze - 0.4 && t <= bis) t = bis + 0.1;
+    }
+    return t;
+  }
+
   /** Hoechste erlaubte Hindernishoehe der Etappe -- spaeter wird es enger. */
   function obstacleRange(stage) {
     const min = 90 + stage * 22;
@@ -276,8 +292,16 @@ const GameLogic = (() => {
   ];
 
   /**
-   * Haelt eine Wunschhoehe so, dass sie in der Luecke bei s liegt.
-   * Dadurch landet kein Geschenk in einem Hindernis.
+   * Haelt eine Wunschhoehe in die freie Luecke bei s: nach unten begrenzt von
+   * den Hindernissen, die dort vom Boden stehen, nach oben von denen, die von
+   * der Decke haengen.
+   *
+   * Solange es bei s eine Luecke gibt, liegt das Ergebnis in ihr -- dann landet
+   * kein Geschenk in einem Hindernis. Widersprechen sich die Grenzen aber, weil
+   * sich bei s ein Boden- und ein Deckenhindernis ueberlappen, liefert die
+   * Funktion die Mitte zwischen ihnen und damit eine Hoehe mitten im Hindernis.
+   * Sie garantiert also kein hindernisfreies Geschenk, sie setzt nur voraus,
+   * dass die Strecke keine solche Doppelpassage enthaelt.
    */
   function inDieLuecke(obstacles, s, yWunsch) {
     const rand = GIFT_R + 10;
@@ -288,6 +312,10 @@ const GameLogic = (() => {
       if (o.from === 'boden') unten = Math.min(unten, FIELD.groundY - o.h - rand);
       else oben = Math.max(oben, o.h + rand);
     }
+    // Der Notausgang fuer widersprueckliche Grenzen. Auf der derzeitigen
+    // Strecke greift er nie: die Hindernisse stehen einzeln und ueberlappen
+    // nicht, dafuer sorgen eigene Tests. Der Test "kein Geschenk liegt in
+    // einem Hindernis" deckt ihn ab -- griffe er, wuerde dieser Test melden.
     if (oben > unten) return (oben + unten) / 2;
     return clamp(yWunsch, oben, unten);
   }
@@ -305,7 +333,11 @@ const GameLogic = (() => {
     const obstacles = [];
     let vonDerDecke = false;
 
-    for (let ta = 4.5; ta < TOTAL_SECONDS - 2.5; ta += 1.45 + rnd() * 0.95) {
+    // Abstand 1,4 bis 1,9 s: gleichmaessig genug, dass eine Geschenkgruppe
+    // tatsaechlich an einem Hindernis vorbeifuehrt statt in einer langen Luecke
+    // zu liegen, und immer noch weit ueber den 1,3 s, die ein Hoehenwechsel
+    // zwischen zwei Hindernissen braucht.
+    for (let ta = 4.5; ta < TOTAL_SECONDS - 2.5; ta += 1.4 + rnd() * 0.5) {
       if (imFreienAbschnitt(ta)) continue;
       const stage = stageAt(ta);
       const { min, max } = obstacleRange(stage);
@@ -330,38 +362,83 @@ const GameLogic = (() => {
     let ta = 6;
     for (let i = 0; i < gruppen.length && gifts.length < GIFT_TOTAL; i++) {
       const anzahl = Math.min(gruppen[i], GIFT_TOTAL - gifts.length);
-      gifts.push(...gruppeSetzen(obstacles, rnd, ta, anzahl, klassen[i]));
+      // Hinter der Stadtnamen-Einblendung soll nichts liegen, was genaues
+      // Fliegen verlangt -- aus demselben Grund, aus dem dort keine
+      // Hindernisse stehen.
+      gifts.push(...gruppeSetzen(obstacles, rnd, nachDemFreienAbschnitt(ta), anzahl, klassen[i]));
       ta += 10;                               // 14 Gruppen bis kurz vor das Ziel
     }
 
     return { obstacles, gifts };
   }
 
+  /**
+   * Zeitabstand innerhalb einer Geschenkgruppe, je Schwierigkeitsklasse.
+   *
+   * Riskant braucht mehr Zeit als bequem: dort wechselt die Hoehe von Geschenk
+   * zu Geschenk, und das Hindernis, an dessen Kante die Gruppe liegt, kann
+   * mitten in der Gruppe von unten nach oben springen.
+   *
+   * Knifflig braucht eine ganze Sekunde. Der Zickzack ueber 240 Einheiten
+   * verlangt, dass Muhdolf an jedem Geschenk die Richtung umkehrt; mit
+   * Umkehren an beiden Enden sind in der Zeit T hoechstens 323 * T^2 Einheiten
+   * zu schaffen -- bei 0,8 s also 207 und damit weniger als der Zickzack
+   * braucht. Die Gruppe waere nur in freier Luft und nur mit Hoechsttempo am
+   * unteren Geschenk zu holen; steht dahinter ein Hindernis, kostet sie
+   * zwangslaeufig ein Herz.
+   */
+  const GIFT_SPACING = { bequem: 0.25, riskant: 0.45, knifflig: 1.0 };
+
+  /** Das Hindernis, dessen Mitte s am naechsten liegt -- oder null, wenn keines in Reichweite. */
+  function naechstesHindernis(obstacles, s) {
+    let beste = null;
+    let dist = Infinity;
+    for (const o of obstacles) {
+      const d = Math.abs(o.s - s);
+      if (d < dist) {
+        dist = d;
+        beste = o;
+      }
+    }
+    return dist <= 420 ? beste : null;
+  }
+
   /** Setzt eine Gruppe Geschenke ab der Ankunftszeit ta. */
   function gruppeSetzen(obstacles, rnd, ta, anzahl, klasse) {
-    const stage = stageAt(ta);
-    const schritt = 46;                       // Abstand innerhalb der Gruppe
-    const s0 = sAtTime(ta) + COW.x;
+    const abstand = GIFT_SPACING[klasse];
     const bequem = 200 + rnd() * 120;         // mittlere Flughoehe
     const liste = [];
 
     for (let i = 0; i < anzahl; i++) {
-      const s = s0 + i * schritt;
+      const taI = ta + i * abstand;
+      const s = sAtTime(taI) + COW.x;
       let wunsch;
       if (klasse === 'bequem') {
         wunsch = bequem + Math.sin(i * 0.9) * 26;
       } else if (klasse === 'riskant') {
-        // dicht an die Luecke eines Hindernisses in der Naehe
-        const nah = obstacles.find((o) => Math.abs(o.s - s) < 320);
+        // Dicht an die Kante des naechstgelegenen Hindernisses, aber sichtbar
+        // daneben: ein Geschenk, das im Bild im Hindernis steckt, sieht kaputt
+        // aus. Weil die Trefferflaechen auf 80 % geschrumpft sind, bleibt dabei
+        // ein Sicherheitspolster -- das Risiko liegt im Umweg, nicht im Pixel.
+        const nah = naechstesHindernis(obstacles, s);
+        const rand = GIFT_R + 12 + (i % 2) * 18;   // wechselnd, sonst reiner Horizontalflug
         wunsch = !nah ? bequem
           : nah.from === 'boden'
-            ? FIELD.groundY - nah.h - 46
-            : nah.h + 46;
+            ? FIELD.groundY - nah.h - rand
+            : nah.h + rand;
       } else {
-        // knifflig: Zickzack mit grossem Hub
-        wunsch = i % 2 === 0 ? 110 : FIELD.groundY - 110;
+        // Knifflig: Zickzack mit grossem Hub. Der Abstand ist in Zeit gemessen,
+        // nicht in Streckeneinheiten -- sonst waere dieselbe Gruppe in Bregenz
+        // unmoeglich, weil die Strecke dort um die Haelfte schneller laeuft.
+        wunsch = i % 2 === 0 ? 150 : FIELD.groundY - 110;
       }
-      liste.push({ s, y: Math.round(inDieLuecke(obstacles, s, wunsch)), stage: stageAt(ta), klasse });
+      liste.push({
+        ta: Math.round(taI * 1000) / 1000,
+        s,
+        y: Math.round(inDieLuecke(obstacles, s, wunsch)),
+        stage: stageAt(taI),
+        klasse,
+      });
     }
     return liste;
   }
@@ -372,6 +449,7 @@ const GameLogic = (() => {
     SCORE, SEED, rateFor,
     createState, step, scoreOf, buildRoute, clamp,
     makeRng, sAtTime, stageAt, obstacleRange,
+    naechstesHindernis, nachDemFreienAbschnitt,
     cowBox, obstacleBox, ueberlappt,
   };
 })();

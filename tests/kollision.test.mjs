@@ -103,3 +103,25 @@ test('die Unverwundbarkeit laeuft nach 1,5 Sekunden ab', () => {
   }
   assert.equal(z.invuln, 0);
 });
+
+test('ein Absturz im letzten Zeitschritt bleibt ein Absturz', () => {
+  const z = L.createState({ obstacles: [], gifts: [] });
+  z.t = L.TOTAL_SECONDS - L.STEP / 2;        // Ziel wird in diesem Schritt erreicht
+  z.hearts = 1;
+  z.cowY = L.FIELD.groundY - L.COW.h / 2 + 1;
+  L.step(z, false, L.STEP);
+  assert.equal(z.phase, 'abgestuerzt', 'Der dritte Treffer beendet das Spiel, auch auf der Ziellinie');
+  assert.equal(z.hearts, 0);
+  assert.ok(z.score < L.SCORE.finish + 1400,
+    `Kein Zielbonus fuer einen Absturz, Punktzahl war ${z.score}`);
+});
+
+test('im Absturzschritt wird kein Geschenk mehr eingesammelt', () => {
+  const g = { s: L.COW.x, y: L.FIELD.groundY - L.COW.h / 2 };
+  const z = L.createState({ obstacles: [], gifts: [g] });
+  z.hearts = 1;
+  z.cowY = L.FIELD.groundY - L.COW.h / 2 + 1;
+  L.step(z, false, L.STEP);
+  assert.equal(z.phase, 'abgestuerzt');
+  assert.equal(z.giftsTaken, 0);
+});
