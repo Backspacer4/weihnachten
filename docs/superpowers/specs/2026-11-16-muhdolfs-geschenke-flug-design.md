@@ -168,8 +168,10 @@ Genau das macht den Vergleich interessant.
 
 Punkte nach geflogener Zeit, nicht nach zurückgelegter Strecke: die Strecke hängt an
 der Feldbreite, und ein Breitbild-Laptop soll keine höheren Punktzahlen liefern als ein
-Handy. Wer einfach durchkommt, hat etwa 2200 bis 2600 Punkte — die volle Punktzahl
-verlangt eine saubere Runde mit allen Geschenken.
+Handy. Wer nur Hindernissen ausweicht und keine Geschenke jagt, erreicht Bregenz mit
+knapp 3000 Punkten (gemessen: drei Herzen, 15 bis 16 Geschenke im Vorbeiflug). Die
+volle Punktzahl verlangt eine saubere Runde mit allen fünfzig — nachgewiesen
+erreichbar, aber nur mit geübter Hand.
 - Drei Herzen. Ein Treffer kostet ein Herz; der dritte Treffer beendet das Spiel.
   Nach einem Treffer wird Muhdolfs Fallgeschwindigkeit auf null gesetzt und sie
   leicht über die Trefferstelle versetzt, damit sie nicht im selben Hindernis hängen
