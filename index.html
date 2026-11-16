@@ -72,10 +72,83 @@ const GameLogic = (() => {
     return (FIELD.w - COW.x) / STAGES[stage].crossing;
   }
 
+  // --- Zustand ------------------------------------------------------------
+
+  /**
+   * Legt einen Spielzustand an. Die Strecke kann uebergeben werden; das
+   * brauchen die Tests, um mit bekannten Hindernissen zu rechnen.
+   */
+  function createState(route) {
+    const strecke = route || buildRoute();
+    return {
+      phase: 'fliegt',          // 'fliegt' | 'ziel' | 'abgestuerzt'
+      t: 0,                     // Flugzeit in Sekunden
+      s: 0,                     // Streckenposition der Kamera
+      cowY: FIELD.h / 2,        // Mittelpunkt von Muhdolf
+      vy: 0,
+      hearts: HEARTS,
+      invuln: 0,
+      giftsTaken: 0,
+      stage: 0,
+      bannerLeft: 0,            // restliche Anzeigedauer des Stadtnamens
+      obstacles: strecke.obstacles,
+      gifts: strecke.gifts.map((g) => ({ s: g.s, y: g.y, taken: false })),
+      score: 0,
+    };
+  }
+
+  function clamp(wert, unten, oben) {
+    return wert < unten ? unten : wert > oben ? oben : wert;
+  }
+
+  /**
+   * Rechnet einen Zeitschritt. Veraendert den Zustand an Ort und Stelle und
+   * gibt ihn zurueck. Beruehrt nichts ausserhalb des Zustands -- kein DOM,
+   * keine Uhr, kein Zufall.
+   */
+  function step(zustand, auftrieb, dt) {
+    if (zustand.phase !== 'fliegt') return zustand;
+
+    zustand.t += dt;
+    zustand.s += rateFor(zustand.stage) * dt;
+    if (zustand.invuln > 0) zustand.invuln = Math.max(0, zustand.invuln - dt);
+    if (zustand.bannerLeft > 0) zustand.bannerLeft = Math.max(0, zustand.bannerLeft - dt);
+
+    const a = PHYS.gravity - (auftrieb ? PHYS.lift : 0);
+    zustand.vy = clamp(zustand.vy + a * dt, -PHYS.maxRise, PHYS.maxFall);
+    zustand.cowY += zustand.vy * dt;
+
+    const oben = COW.h / 2;
+    if (zustand.cowY < oben) {
+      zustand.cowY = oben;
+      zustand.vy = 0;
+    }
+
+    zustand.score = scoreOf(zustand);
+    return zustand;
+  }
+
+  /** Punktestand zu einem Zustand. Reine Rechnung, kein Seiteneffekt. */
+  function scoreOf(zustand) {
+    const zeit = Math.floor(Math.min(zustand.t, TOTAL_SECONDS) * SCORE.perSecond);
+    let punkte = zeit + zustand.giftsTaken * SCORE.perGift;
+    if (zustand.phase === 'ziel') {
+      punkte += SCORE.finish + zustand.hearts * SCORE.perHeart;
+      if (zustand.giftsTaken >= GIFT_TOTAL) punkte += SCORE.allGifts;
+    }
+    return punkte;
+  }
+
+  // Wird in Aufgabe 4 durch die echte Streckenberechnung ersetzt.
+  function buildRoute() {
+    return { obstacles: [], gifts: [] };
+  }
+
   return {
     FIELD, COW, PHYS, STEP, HEARTS, INVULN, HIT_SHRINK, MIN_GAP, MAX_OBSTACLE_H,
     GIFT_TOTAL, GIFT_R, STAGE_SECONDS, STAGES, TOTAL_SECONDS, BANNER, CLEAR_SPAN,
     SCORE, SEED, rateFor,
+    createState, step, scoreOf, buildRoute, clamp,
   };
 })();
 </script>
