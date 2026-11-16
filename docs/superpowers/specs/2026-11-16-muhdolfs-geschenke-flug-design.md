@@ -53,20 +53,25 @@ weder Wischgesten noch Doppeltipp-Zoom auslösen (`touch-action: none`).
 
 ### Spielfeld und Maßstab
 
-Die Spiellogik rechnet in logischen Einheiten, unabhängig von der Bildschirmgröße:
+Das Spielfeld ist fest **960 × 540 logische Einheiten**, auf jedem Gerät gleich. Es
+wird mit einem einheitlichen Faktor so groß skaliert, wie es ins Fenster passt
+(`min(Fensterbreite ÷ 960, Fensterhöhe ÷ 540)`), und mittig gesetzt; was übrig bleibt,
+ist Rand. Gezeichnet wird mit `devicePixelRatio`-Skalierung, damit nichts unscharf wird.
 
-- Logische Höhe: fest **540** Einheiten.
-- Logische Breite: `clamp(round(540 × Seitenverhältnis), 400, 1280)`.
-- Das Canvas füllt das Browserfenster; gezeichnet wird mit
-  `devicePixelRatio`-Skalierung, damit nichts unscharf wird.
+Die feste Feldgröße ist die zweite Voraussetzung für vergleichbare Punktzahlen. Hätte
+ein Breitbildschirm ein breiteres Feld, würde er Hindernisse früher sehen und leichter
+ausweichen — und eine Strecke, die auf dem Handy fair ist, wäre am Laptop langweilig.
+So sieht jeder genau dasselbe, und die Strecke lässt sich auf eine Schwierigkeit hin
+abstimmen.
 
-Ein Hochformat-Handy bekommt damit ein hohes, schmales Feld, ein Laptop ein breites.
-Weil ein schmales Feld weniger Vorwarnzeit gibt, wird die Scrollgeschwindigkeit an die
-Breite gekoppelt: Ein Hindernis braucht **immer gleich lange** von rechts bis zu
-Muhdolf, egal wie breit das Feld ist. Geschwindigkeit = Breite ÷ Querungszeit.
+Im Querformat füllt das Feld den Bildschirm. Im Hochformat bleibt es ein Streifen in
+der Mitte, darüber und darunter liegt die Anzeige — spielbar, aber klein; der
+Startbildschirm empfiehlt deshalb einmal freundlich, das Gerät zu drehen. Bei Drehung
+oder Größenänderung wird neu skaliert und ein laufendes Spiel pausiert.
 
-Bei Größenänderung oder Drehung des Geräts wird neu vermessen und neu skaliert; ein
-laufendes Spiel pausiert dabei statt abzubrechen.
+Muhdolf fliegt an fester Stelle bei x = 173 (von 960). Ein Hindernis braucht damit von
+der rechten Kante bis zu ihr 787 Einheiten; aus der Querungszeit folgt die
+Scrollgeschwindigkeit: 175 Einheiten/s in Bludenz, 262 in Bregenz.
 
 ### Physik
 
@@ -83,7 +88,7 @@ Startwerte (in logischen Einheiten pro Sekunde; beim Spieltest nachjustierbar):
 | Auftrieb (gehalten) | 2600 /s² nach oben |
 | maximale Sinkgeschwindigkeit | 700 /s |
 | maximale Steiggeschwindigkeit | 600 /s |
-| Muhdolfs x-Position | 18 % der Feldbreite |
+| Muhdolfs x-Position | 173 von 960 |
 | Trefferfläche Muhdolf | 56 × 40 Einheiten |
 | Querungszeit Etappe 1 → 4 | 4,5 s → 3,0 s (linear) |
 
@@ -124,8 +129,13 @@ Schrift lag. Ein Test prüft diese freien Abschnitte mit.
 ### Feste Strecke
 
 Die Strecke ist festgelegt und bei jedem Aufruf dieselbe: gleiche Hindernisse, gleiche
-Geschenke, gleiche Reihenfolge, auf jedem Gerät. Hindernisse und Geschenke stehen als
-Datentabelle im Quelltext, nach Flugzeit sortiert, und werden nicht zufällig erzeugt.
+Geschenke, gleiche Reihenfolge, auf jedem Gerät. Sie wird beim Start aus einem festen
+Zufallskeim berechnet — dieselbe Rechnung ergibt überall dasselbe Ergebnis, ohne dass
+eine hundertzeilige Tabelle im Quelltext stehen muss. Jedes Hindernis und jedes
+Geschenk hat eine Ankunftszeit bei Muhdolf, aus der sich seine Position auf der Strecke
+ergibt. Es steht immer nur ein Hindernis im Weg, abwechselnd vom Boden und von der
+Decke — keine engen Doppelpassagen. Tests prüfen die erzeugte Strecke auf
+Spielbarkeit; der Keim wird nach dem Spieltest festgeschrieben.
 
 Das ist die Voraussetzung dafür, dass zwei Punktzahlen überhaupt etwas bedeuten. Mit
 Zufallsstrecken vergleicht man Glück; mit einer festen Strecke vergleicht man Können,
@@ -207,8 +217,11 @@ Laufzeit. Gründe:
 - Das Hosting bleibt austauschbar: eine Datei hochladen, fertig.
 - Nichts kann durch einen abgeschalteten Fremddienst kaputtgehen.
 
-Grafik: Canvas 2D, alles aus Pfaden gezeichnet. Textanzeigen ebenfalls im Canvas,
-damit Spielfeld und Anzeige nicht auseinanderlaufen. Systemschriften.
+Grafik: Canvas 2D, alles aus Pfaden gezeichnet — im Canvas liegt allein die Spielwelt.
+Punkte, Herzen, Stadtname und alle Bildschirme (Start, Pause, Ziel, Absturz) sind HTML
+über dem Canvas. Das kostet nichts und bringt dreierlei: Der Endbildschirm darf im
+Hochformat umbrechen und bleibt auf dem Screenshot lesbar, Text ist markierbar und
+vorlesbar, und niemand muss Schriftmaße im Canvas nachrechnen. Systemschriften.
 
 ### Innerer Aufbau
 
