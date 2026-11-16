@@ -877,8 +877,11 @@ test('ein Hindernis von der Decke trifft oben', () => {
 });
 
 test('nach einem Treffer wird Muhdolf aus dem Hindernis gesetzt', () => {
+  // Direkter step-Aufruf statt einSchritt: einSchritt haelt die Hoehe
+  // absichtlich fest (siehe sein Kommentar) und wuerde genau die Versetzung
+  // rueckgaengig machen, die dieser Test beobachten soll.
   const { z } = mitHindernis({ h: 300, cowY: 460 });
-  einSchritt(z);
+  L.step(z, false, L.STEP);
   assert.ok(z.cowY < L.FIELD.groundY - 300,
     `erwartet oberhalb der Spitze (y < 200), war ${z.cowY}`);
   assert.equal(z.vy, 0, 'Die Fallgeschwindigkeit muss genullt sein');
