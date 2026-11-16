@@ -186,6 +186,17 @@ const GameLogic = (() => {
       }
     }
 
+    // Geschenke
+    const kuhG = cowBox(zustand);
+    for (const g of zustand.gifts) {
+      if (g.taken) continue;
+      if (Math.abs(g.s - (zustand.s + COW.x)) > GIFT_R + COW.w) continue;
+      const kasten = { x0: g.s - GIFT_R, x1: g.s + GIFT_R, y0: g.y - GIFT_R, y1: g.y + GIFT_R };
+      if (!ueberlappt(kuhG, kasten)) continue;
+      g.taken = true;
+      zustand.giftsTaken += 1;
+    }
+
     const etappe = Math.min(STAGES.length - 1, Math.floor(zustand.t / STAGE_SECONDS));
     if (etappe !== zustand.stage) {
       zustand.stage = etappe;
