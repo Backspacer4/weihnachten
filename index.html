@@ -72,6 +72,46 @@ const GameLogic = (() => {
     return (FIELD.w - COW.x) / STAGES[stage].crossing;
   }
 
+  // --- Kollision ----------------------------------------------------------
+
+  /** Trefferflaeche von Muhdolf, auf 80 % geschrumpft. */
+  function cowBox(zustand) {
+    const hw = (COW.w * HIT_SHRINK) / 2;
+    const hh = (COW.h * HIT_SHRINK) / 2;
+    const mitte = zustand.s + COW.x;
+    return { x0: mitte - hw, x1: mitte + hw, y0: zustand.cowY - hh, y1: zustand.cowY + hh };
+  }
+
+  /** Trefferflaeche eines Hindernisses, ebenfalls auf 80 % geschrumpft. */
+  function obstacleBox(o) {
+    const hw = (o.w * HIT_SHRINK) / 2;
+    const h = o.h * HIT_SHRINK;
+    return o.from === 'boden'
+      ? { x0: o.s - hw, x1: o.s + hw, y0: FIELD.groundY - h, y1: FIELD.groundY }
+      : { x0: o.s - hw, x1: o.s + hw, y0: 0, y1: h };
+  }
+
+  function ueberlappt(a, b) {
+    return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+  }
+
+  /**
+   * Zieht ein Herz ab und setzt Muhdolf auf eine freie Hoehe. Ohne das
+   * Versetzen bliebe sie im selben Hindernis stecken und verlore alle drei
+   * Herzen auf einen Schlag.
+   */
+  function treffer(zustand, freieHoehe) {
+    if (zustand.invuln > 0) return;
+    zustand.hearts -= 1;
+    zustand.vy = 0;
+    zustand.cowY = clamp(freieHoehe, COW.h / 2, FIELD.groundY - COW.h / 2);
+    zustand.invuln = INVULN;
+    if (zustand.hearts <= 0) {
+      zustand.hearts = 0;
+      zustand.phase = 'abgestuerzt';
+    }
+  }
+
   // --- Zustand ------------------------------------------------------------
 
   /**
@@ -122,6 +162,28 @@ const GameLogic = (() => {
     if (zustand.cowY < oben) {
       zustand.cowY = oben;
       zustand.vy = 0;
+    }
+
+    // Boden
+    const unten = FIELD.groundY - COW.h / 2;
+    if (zustand.cowY > unten) {
+      zustand.cowY = unten;
+      zustand.vy = 0;
+      treffer(zustand, unten - 70);
+    }
+
+    // Hindernisse
+    if (zustand.phase === 'fliegt' && zustand.invuln <= 0) {
+      const kuh = cowBox(zustand);
+      for (const o of zustand.obstacles) {
+        if (Math.abs(o.s - (zustand.s + COW.x)) > o.w / 2 + COW.w) continue;
+        if (!ueberlappt(kuh, obstacleBox(o))) continue;
+        const frei = o.from === 'boden'
+          ? FIELD.groundY - o.h - COW.h / 2 - 24
+          : o.h + COW.h / 2 + 24;
+        treffer(zustand, frei);
+        break;
+      }
     }
 
     const etappe = Math.min(STAGES.length - 1, Math.floor(zustand.t / STAGE_SECONDS));
@@ -299,6 +361,7 @@ const GameLogic = (() => {
     SCORE, SEED, rateFor,
     createState, step, scoreOf, buildRoute, clamp,
     makeRng, sAtTime, stageAt, obstacleRange,
+    cowBox, obstacleBox, ueberlappt,
   };
 })();
 </script>
