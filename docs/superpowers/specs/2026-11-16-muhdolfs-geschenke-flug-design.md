@@ -15,6 +15,8 @@ Erfolgskriterien:
 2. Das Spiel ist auf Handy und Laptop gleich gut spielbar und läuft überall gleich schnell.
 3. Auch jemand, der zum ersten Mal ein solches Spiel spielt, erreicht Bregenz.
 4. Niemand verpasst die Weihnachtsbotschaft, auch wer das Ziel nie erreicht.
+5. Zwei Punktzahlen sind vergleichbar: alle fliegen dieselbe Strecke, und der
+   Endbildschirm passt vollständig auf einen Screenshot.
 
 Nicht-Ziele: Mehrspieler, globale Rangliste, Benutzerkonten, Tonspur, App-Store-Version.
 
@@ -88,8 +90,8 @@ Startwerte (in logischen Einheiten pro Sekunde; beim Spieltest nachjustierbar):
 Oben stößt Muhdolf an eine unsichtbare Decke und wird dort festgehalten — ohne Strafe.
 Bodenkontakt kostet ein Herz. Damit die Decke kein sicherer Hafen ist, hängen
 Hindernisse abwechselnd am Boden und von oben herab (Gondeln, Seilbahnkabinen, Möwen).
-Aufeinanderfolgende Hindernisse lassen immer eine Lücke von mindestens
-3,2 × Muhdolfs Höhe — eine Strecke, die niemand schaffen kann, darf nicht entstehen.
+Jede Lücke ist mindestens 3,2 × Muhdolfs Höhe hoch — eine unpassierbare Stelle darf
+die Strecke nicht enthalten.
 
 Trefferflächen sind achsenparallele Rechtecke, auf 80 % der sichtbaren Größe
 geschrumpft. Spieler verzeihen einen knapp verpassten Treffer leichter als einen
@@ -101,30 +103,63 @@ Jede Etappe dauert 35 Sekunden Flugzeit, insgesamt 140 Sekunden.
 
 | Etappe | Kulisse (Silhouetten im Hintergrund) | Hindernisse |
 |---|---|---|
-| Bludenz | Bergkette, Schokoladefabrik, Burg Gayenhofen | Felszacken vom Boden, Seilbahngondeln von oben |
+| Bludenz | Hochgebirge: Zimba, Schesaplana, Rätikon-Kette, davor die Schokoladefabrik | Felszacken vom Boden, Seilbahngondeln von oben |
 | Feldkirch | Schattenburg, Katzenturm, Altstadtdächer | Burgtürme, Kirchturmspitze, Dachgiebel |
 | Dornbirn | Rotes Haus, Marktplatz, Karrenseilbahn | Hausdächer, Seilbahnkabinen von oben |
 | Bregenz | Martinsturm, Seebühne, Pfänder, Bodensee | Seebühnen-Aufbauten, Möwen von oben |
 
-Die Reihenfolge folgt der Geografie von Süd nach Nord: aus den Bergen ins flache
-Rheintal zum See. Entsprechend sinkt die Horizontlinie von Etappe zu Etappe, und in
-Bregenz liegt unten Wasser statt Schnee. Der Hintergrund scrollt langsamer als die
-Hindernisse (Parallaxe), was Tiefe erzeugt.
+Die Reihenfolge folgt der Geografie von Süd nach Nord: aus dem Hochgebirge ins flache
+Rheintal zum See. Bludenz ist bewusst die Bergetappe — mehrere Bergketten in
+gestaffelter Tiefe, vorn die markante Pyramide der Zimba, dahinter Schesaplana und
+Rätikon. Von Etappe zu Etappe sinkt die Horizontlinie, die Berge weichen Hügeln und
+Dächern, in Bregenz liegt unten Wasser statt Schnee. Der Hintergrund scrollt langsamer
+als die Hindernisse (Parallaxe), was Tiefe erzeugt.
 
 Beim Etappenwechsel wird der Stadtname zwei Sekunden lang eingeblendet, während das
 Spiel weiterläuft. Der Hintergrund wird über eine Sekunde übergeblendet, nicht
-umgeschaltet. Während der Einblendung werden keine neuen Hindernisse erzeugt, damit
-der Spieler nicht von einem Hindernis getroffen wird, das er hinter der Schrift
-nicht gesehen hat.
+umgeschaltet. An den Etappengrenzen ist die Strecke bewusst für drei Sekunden frei,
+damit niemand von einem Hindernis getroffen wird, das hinter der eingeblendeten
+Schrift lag. Ein Test prüft diese freien Abschnitte mit.
+
+### Feste Strecke
+
+Die Strecke ist festgelegt und bei jedem Aufruf dieselbe: gleiche Hindernisse, gleiche
+Geschenke, gleiche Reihenfolge, auf jedem Gerät. Hindernisse und Geschenke stehen als
+Datentabelle im Quelltext, nach Flugzeit sortiert, und werden nicht zufällig erzeugt.
+
+Das ist die Voraussetzung dafür, dass zwei Punktzahlen überhaupt etwas bedeuten. Mit
+Zufallsstrecken vergleicht man Glück; mit einer festen Strecke vergleicht man Können,
+und Üben lohnt sich — man lernt die Stelle in Dornbirn, an der man dreimal gescheitert
+ist. Zufall bleibt nur in der Deko (Schneeflocken, Flügelschlag), nie im Spielinhalt.
+
+Durchkommen ist dabei leicht, die volle Punktzahl schwer. Die Strecke bietet überall
+eine bequeme Route, die ohne Treffer zum Ziel führt. Die Geschenke liegen aber zum Teil
+abseits davon:
+
+| Anteil | Lage | Anspruch |
+|---|---|---|
+| etwa die Hälfte | in der bequemen Fluglinie | nimmt man im Vorbeiflug mit |
+| etwa ein Drittel | dicht an Hindernissen, kurzer Umweg nötig | kostet Mut |
+| der Rest | in engen Lücken, schneller Höhenwechsel nötig | nur mit geübter Hand |
+
+So erreicht jeder Bregenz, aber alle 50 Geschenke holt nur, wer die Strecke kennt.
+Genau das macht den Vergleich interessant.
 
 ### Punkte, Geschenke, Herzen
 
-- Geflogene Zeit: 10 Punkte je Sekunde. Nicht die zurückgelegte Strecke — die
-  hängt an der Feldbreite, und ein Breitbild-Laptop soll keine höheren Punktzahlen
-  liefern als ein Handy.
-- Eingesammeltes Geschenk: 50 Punkte. Geschenke erscheinen alle 1,2 bis 2,2 Sekunden
-  an zufälliger Höhe, nie innerhalb eines Hindernisses.
-- Ziel erreicht: 500 Punkte, zusätzlich 100 je verbleibendem Herz.
+| Quelle | Punkte | maximal |
+|---|---|---|
+| geflogene Zeit | 10 je Sekunde | 1400 |
+| eingesammeltes Geschenk | 50 je Stück, 50 Stück auf der Strecke | 2500 |
+| Bregenz erreicht | 500 | 500 |
+| verbleibendes Herz | 100 je Herz | 300 |
+| alle 50 Geschenke | 500 | 500 |
+| **volle Punktzahl** | | **5200** |
+
+Punkte nach geflogener Zeit, nicht nach zurückgelegter Strecke: die Strecke hängt an
+der Feldbreite, und ein Breitbild-Laptop soll keine höheren Punktzahlen liefern als ein
+Handy. Wer einfach durchkommt, hat etwa 2200 bis 2600 Punkte — die volle Punktzahl
+verlangt eine saubere Runde mit allen Geschenken.
 - Drei Herzen. Ein Treffer kostet ein Herz; der dritte Treffer beendet das Spiel.
   Nach einem Treffer wird Muhdolfs Fallgeschwindigkeit auf null gesetzt und sie
   leicht über die Trefferstelle versetzt, damit sie nicht im selben Hindernis hängen
@@ -142,15 +177,21 @@ darunter.
 
 **Spiel.** Siehe oben.
 
-**Ziel erreicht.** Bodensee-Panorama, Muhdolf landet. Punktzahl, Rekord, und groß:
+**Ziel erreicht.** Bodensee-Panorama, Muhdolf landet. Darauf die Abrechnung, bewusst
+so gesetzt, dass ein einzelner Screenshot alles zeigt, was man vergleichen will:
 
-> Frohe Weihnachten wünschen Mona und Michi
+- die Punktzahl groß und mittig, daneben "von 5200"
+- eingesammelte Geschenke als "37 von 50"
+- verbleibende Herzen
+- der eigene Rekord
+- und groß: *Frohe Weihnachten wünschen Mona und Michi*
 
-Darunter "Nochmal fliegen".
+Darunter "Nochmal fliegen". Alles ohne Scrollen sichtbar, auch im Hochformat — ein
+abgeschnittener Screenshot taugt nicht zum Angeben.
 
-**Abgestürzt.** Dieselbe Botschaft, nur unaufgeregt gesetzt: erreichte Stadt,
-Punktzahl, Rekord, "Nochmal fliegen". Wer in Dornbirn an einem Dach hängen bleibt,
-soll den Gruß trotzdem lesen — das ist der eigentliche Zweck der Seite.
+**Abgestürzt.** Gleicher Aufbau, nur unaufgeregt gesetzt, plus die erreichte Stadt.
+Wer in Dornbirn an einem Dach hängen bleibt, soll den Gruß trotzdem lesen — das ist
+der eigentliche Zweck der Seite.
 
 **Pause.** Wird das Fenster verlassen, pausiert das Spiel sichtbar und wartet auf eine
 Eingabe. Ein Anruf mitten im Flug darf keine Runde kosten.
@@ -201,14 +242,19 @@ keine Abhängigkeiten). Geprüft wird:
 - Kollision: Treffer wird erkannt, Beinahe-Vorbeiflug nicht, Unverwundbarkeit schützt.
 - Herzen: drei Treffer beenden das Spiel, zwei nicht.
 - Punkte: Flugzeit, Geschenke, Zielbonus, Herzbonus.
-- Erzeugung: aufeinanderfolgende Hindernisse lassen immer die geforderte Lücke;
-  Geschenke liegen nie in einem Hindernis. Geprüft über viele Durchläufe mit
-  festem Zufallskeim.
+- Strecke: enthält genau 50 Geschenke, kein Geschenk liegt in einem Hindernis, jede
+  Lücke ist mindestens 3,2 × Muhdolfs Höhe hoch, und keine zwei Hindernisse
+  überlappen. Eine unpassierbare oder unfaire Strecke soll ein Test melden, nicht
+  ein Empfänger.
+- Punkteobergrenze: eine perfekte Runde ergibt genau 5200 Punkte.
+- Die Strecke ist von der Feldbreite unabhängig: dieselbe Runde ergibt im Hoch- und
+  im Querformat dieselbe Punktzahl.
 - Etappen: Wechsel zur richtigen Zeit, Querungszeit sinkt wie vorgesehen, nach
   Bregenz folgt das Ziel.
 
-Zufall läuft über einen Keim-Generator, der in Tests gesetzt werden kann — sonst sind
-diese Prüfungen nicht reproduzierbar.
+Weil die Strecke fest ist, braucht die Spiellogik überhaupt keinen Zufall; die Tests
+sind dadurch ohne Vorkehrungen reproduzierbar. Der Zufall in der Deko läuft über einen
+Keim-Generator und berührt den Spielzustand nicht.
 
 Von Hand geprüft wird, was kein Test abdeckt: Handy im Hoch- und Querformat, Laptop
 mit Tastatur und Maus, Drehen des Geräts im laufenden Spiel, Tab-Wechsel, Privat-Modus,
