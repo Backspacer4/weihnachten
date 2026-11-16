@@ -291,32 +291,106 @@ const GameLogic = (() => {
     { boden: 'seebuehne',  decke: 'moewe' },       // Bregenz
   ];
 
+  /** Weg, den Muhdolf in der Zeit T aus dem Stand hoechstens steigt. */
+  function steigWeg(T) {
+    const a = PHYS.lift - PHYS.gravity;
+    const tv = PHYS.maxRise / a;
+    return T <= tv ? 0.5 * a * T * T : PHYS.maxRise * T - (PHYS.maxRise * PHYS.maxRise) / (2 * a);
+  }
+
+  /**
+   * Zeit, die Muhdolf aus dem Stand braucht, um `weg` Einheiten zu steigen --
+   * die Umkehrung von steigWeg. Steigen ist die langsamere Richtung (Auftrieb
+   * minus Schwerkraft), darum rechnen beide damit: wer es steigend schafft,
+   * schafft es sinkend auch.
+   */
+  function steigZeit(weg) {
+    const a = PHYS.lift - PHYS.gravity;
+    const tv = PHYS.maxRise / a;
+    const wv = 0.5 * a * tv * tv;
+    return weg <= wv ? Math.sqrt((2 * weg) / a) : tv + (weg - wv) / PHYS.maxRise;
+  }
+
+  /** Die schnellste Etappe -- der unguenstigste Fall fuer jede Reaktionszeit. */
+  const MAX_RATE = STAGES.reduce((m, _, i) => Math.max(m, rateFor(i)), 0);
+
+  /**
+   * Bremsweg: die Strecke, die unter Muhdolf durchlaeuft, waehrend sie die
+   * volle Feldhoehe durchsteigt -- in der schnellsten Etappe, also im
+   * unguenstigsten Fall. Ein Hindernis, das weiter als diese Strecke vor ihr
+   * liegt, kann ihre Hoehe nicht einschraenken: bis dorthin erreicht sie jede
+   * Hoehe des Feldes, von welchem Geschenk aus auch immer. Alles naeher als
+   * das beschraenkt sie -- und zwar um so mehr, je naeher es liegt.
+   *
+   * Darum haengt das Fenster an dieser Zahl und nicht an einem geratenen Wert:
+   * sie ist genau die Reichweite, ab der die Flugphysik keine Rolle mehr
+   * spielt. Mit den Startwerten der Physik sind das rund 302 Einheiten
+   * (1,15 s bis durch die 540 Einheiten Feldhoehe, bei 262,3 Einheiten/s in
+   * Bregenz). Wird an der Physik gedreht, wandert das Fenster mit.
+   */
+  const BREMSWEG = MAX_RATE * steigZeit(FIELD.h);
+
   /**
    * Haelt eine Wunschhoehe in die freie Luecke bei s: nach unten begrenzt von
    * den Hindernissen, die dort vom Boden stehen, nach oben von denen, die von
    * der Decke haengen.
    *
-   * Solange es bei s eine Luecke gibt, liegt das Ergebnis in ihr -- dann landet
-   * kein Geschenk in einem Hindernis. Widersprechen sich die Grenzen aber, weil
-   * sich bei s ein Boden- und ein Deckenhindernis ueberlappen, liefert die
-   * Funktion die Mitte zwischen ihnen und damit eine Hoehe mitten im Hindernis.
-   * Sie garantiert also kein hindernisfreies Geschenk, sie setzt nur voraus,
-   * dass die Strecke keine solche Doppelpassage enthaelt.
+   * Zwei Sorten Schranken kommen zusammen:
+   *
+   * 1. Die nahe, optische: ein Geschenk im Umkreis von `o.w / 2 + GIFT_R + 14`
+   *    darf nicht im Hindernis stecken. Sie gilt nach beiden Seiten.
+   * 2. Die Bremsweg-Schranke: ein Hindernis, dessen Vorderkante voraus und
+   *    innerhalb des Bremswegs liegt, verlangt, dass Muhdolf schon beim
+   *    Geschenk nahe genug an seiner Luecke ist. Dieselbe Kante wie unter 1,
+   *    aber gelockert um den Weg, den sie bis zur Vorderkante noch schafft.
+   *    Direkt an der Kante ist die Lockerung null -- dort geht die Schranke
+   *    stetig in die nahe ueber; mit dem Abstand verschwindet sie.
+   *
+   * Hindernisse hinter Muhdolf brauchen kein erweitertes Fenster: an denen ist
+   * sie schon vorbei. Nur die voraus kosten Bremsweg.
+   *
+   * Widersprechen sich zwei Schranken -- ein hohes Bodenhindernis voraus,
+   * waehrend ein Deckenhindernis beim Geschenk nach unten drueckt --, dann
+   * gewinnt die des naeheren Hindernisses, und die weitere entfaellt. Die
+   * naehere ist die dringendere: gegen sie hat Muhdolf keine Zeit mehr, gegen
+   * die weitere wenigstens noch etwas. Die alte Mittelung zwischen beiden
+   * Grenzen ist damit weg -- sie lieferte eine Hoehe mitten im Hindernis und
+   * taugte als Ausgang nicht. Weil jede einzelne Schranke fuer sich einen
+   * nutzbaren Streifen laesst (dafuer sorgt MAX_OBSTACLE_H) und widerspruechliche
+   * uebersprungen werden, liegt das Ergebnis immer im Flugraum.
    */
   function inDieLuecke(obstacles, s, yWunsch) {
     const rand = GIFT_R + 10;
+    const schranken = [];
+
+    for (const o of obstacles) {
+      // Die Kante der freien Luecke, mit Sichtabstand -- fuer beide Sorten gleich.
+      const kante = o.from === 'boden' ? FIELD.groundY - o.h - rand : o.h + rand;
+      const art = o.from === 'boden' ? 'unten' : 'oben';
+      const abstand = Math.max(0, Math.abs(s - o.s) - o.w / 2);
+
+      if (Math.abs(s - o.s) <= o.w / 2 + GIFT_R + 14) {
+        schranken.push({ abstand, art, wert: kante });
+      }
+
+      const vorlauf = o.s - o.w / 2 - s;              // > 0: das Hindernis liegt voraus
+      if (vorlauf > 0 && vorlauf <= BREMSWEG) {
+        const spiel = steigWeg(vorlauf / MAX_RATE);
+        schranken.push({ abstand, art, wert: art === 'unten' ? kante + spiel : kante - spiel });
+      }
+    }
+
+    // Von nah nach fern anwenden, Widersprueche ueberspringen.
+    schranken.sort((a, b) => a.abstand - b.abstand);
     let oben = COW.h / 2;
     let unten = FIELD.groundY - COW.h / 2;
-    for (const o of obstacles) {
-      if (Math.abs(s - o.s) > o.w / 2 + GIFT_R + 14) continue;
-      if (o.from === 'boden') unten = Math.min(unten, FIELD.groundY - o.h - rand);
-      else oben = Math.max(oben, o.h + rand);
+    for (const k of schranken) {
+      const o2 = k.art === 'oben' ? Math.max(oben, k.wert) : oben;
+      const u2 = k.art === 'unten' ? Math.min(unten, k.wert) : unten;
+      if (o2 > u2) continue;
+      oben = o2;
+      unten = u2;
     }
-    // Der Notausgang fuer widersprueckliche Grenzen. Auf der derzeitigen
-    // Strecke greift er nie: die Hindernisse stehen einzeln und ueberlappen
-    // nicht, dafuer sorgen eigene Tests. Der Test "kein Geschenk liegt in
-    // einem Hindernis" deckt ihn ab -- griffe er, wuerde dieser Test melden.
-    if (oben > unten) return (oben + unten) / 2;
     return clamp(yWunsch, oben, unten);
   }
 

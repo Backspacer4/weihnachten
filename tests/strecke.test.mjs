@@ -172,3 +172,53 @@ test('riskante Geschenke liegen naeher am Hindernis als bequeme', () => {
   assert.ok(median(riskant) <= 45,
     `Median-Abstand der riskanten Geschenke ist ${median(riskant)} -- das ist kein Risiko`);
 });
+
+/**
+ * Warum es diesen Test gibt: Ohne ihn kann eine Aenderung an `SEED`, an
+ * `obstacleRange` oder am Hindernisabstand eine Stelle erzeugen, an der ein
+ * Geschenk nur um den Preis eines Herzens zu holen ist. Es liegt dann dicht
+ * vor einem Hindernis auf einer Hoehe, die im Hoehenband dieses Hindernisses
+ * liegt -- wer es nimmt, hat bis zur Vorderkante nicht mehr genug Strecke, um
+ * auszuweichen, und verliert zwangslaeufig ein Herz.
+ *
+ * Die beiden vorhandenen Erreichbarkeitstests sehen das nicht: der eine prueft
+ * nur den Uebergang von Geschenk zu Geschenk, der andere nur den von Hindernis
+ * zu Hindernis. Erst die Kombination Geschenk -> naechstes Hindernis deckt die
+ * Luecke ab.
+ */
+test('jedes Geschenk ist ohne Herzverlust vor dem naechsten Hindernis zu holen', () => {
+  // Einsammel-Toleranz senkrecht: Geschenkradius plus halbe Trefferhoehe. Wer
+  // das Geschenk am oberen bzw. unteren Rand dieser Toleranz nimmt, hat
+  // entsprechend weniger Weg vor sich -- das rechnen wir dem Spieler an, aber
+  // nicht mehr als das.
+  const tol = L.GIFT_R + (L.COW.h * L.HIT_SHRINK) / 2;
+  const halbeKuh = (L.COW.h * L.HIT_SHRINK) / 2;
+  const sortiert = [...strecke.obstacles].sort((a, b) => a.s - b.s);
+
+  for (const g of strecke.gifts) {
+    // Das naechste Hindernis dahinter: das erste, dessen Vorderkante jenseits
+    // des Geschenks liegt. Ein Reichweitenfilter braucht es nicht -- liegt das
+    // Hindernis weit weg, ist hub(T) groesser als das Feld und die Pruefung
+    // geht von selbst durch.
+    const o = sortiert.find((x) => x.s - x.w / 2 > g.s);
+    if (!o) continue;
+    const T = (o.s - o.w / 2 - g.s) / L.rateFor(o.stage);
+    // Hoehe, die Muhdolf an der Vorderkante haben MUSS, um nicht zu treffen.
+    const grenze = o.from === 'boden'
+      ? L.FIELD.groundY - o.h * L.HIT_SHRINK - halbeKuh
+      : o.h * L.HIT_SHRINK + halbeKuh;
+    // Guenstigster Einsammelpunkt: vor einem Bodenhindernis muss sie nach oben,
+    // also nimmt sie das Geschenk am oberen Rand der Toleranz mit; vor einem
+    // Deckenhindernis umgekehrt.
+    const start = o.from === 'boden' ? g.y - tol : g.y + tol;
+    const noetig = o.from === 'boden'
+      ? Math.max(0, start - grenze)
+      : Math.max(0, grenze - start);
+    assert.ok(noetig <= hub(T) + 1e-9,
+      `Geschenk bei s=${g.s.toFixed(1)} auf y=${g.y} vor dem ` +
+      `${o.from === 'boden' ? 'Boden' : 'Decken'}hindernis ${o.kind} bei s=${o.s.toFixed(1)} ` +
+      `(h=${o.h}, Vorderkante s=${(o.s - o.w / 2).toFixed(1)}): noetig sind ` +
+      `${noetig.toFixed(1)} Einheiten Hoehenwechsel in ${T.toFixed(3)} s, ` +
+      `moeglich sind nur ${hub(T).toFixed(1)}`);
+  }
+});
