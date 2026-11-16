@@ -124,6 +124,17 @@ const GameLogic = (() => {
       zustand.vy = 0;
     }
 
+    const etappe = Math.min(STAGES.length - 1, Math.floor(zustand.t / STAGE_SECONDS));
+    if (etappe !== zustand.stage) {
+      zustand.stage = etappe;
+      zustand.bannerLeft = BANNER;
+    }
+
+    if (zustand.t >= TOTAL_SECONDS) {
+      zustand.t = TOTAL_SECONDS;        // genau abschneiden, sonst stimmt die Obergrenze nicht
+      zustand.phase = 'ziel';
+    }
+
     zustand.score = scoreOf(zustand);
     return zustand;
   }
