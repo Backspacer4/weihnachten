@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Muhdolfs Geschenke-Flug</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #0d1628; color: #f4f7ff;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #buehne { position: fixed; inset: 0; display: grid; place-items: center; }
+  #feld { display: block; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div id="buehne"><canvas id="feld"></canvas></div>
+
+<noscript>
+  <p>Fuer das Spiel braucht es JavaScript. Aber die Hauptsache geht auch ohne:</p>
+  <p><strong>Frohe Weihnachten wuenschen Mona und Michi</strong></p>
+</noscript>
+
+<script id="game-logic">
+const GameLogic = (() => {
+  'use strict';
+
+  // --- Feld und Figur (logische Einheiten, y zaehlt von oben) --------------
+  const FIELD = { w: 960, h: 540, groundY: 500 };
+  const COW = { w: 56, h: 40, x: 173 };
+
+  // --- Flugphysik ---------------------------------------------------------
+  const PHYS = { gravity: 1400, lift: 2600, maxFall: 700, maxRise: 600 };
+  const STEP = 1 / 120;
+
+  // --- Spielregeln --------------------------------------------------------
+  const HEARTS = 3;
+  const INVULN = 1.5;
+  const HIT_SHRINK = 0.8;
+  const MIN_GAP = 3.2 * COW.h;                      // 128
+  const MAX_OBSTACLE_H = FIELD.groundY - MIN_GAP;   // 372
+  const GIFT_TOTAL = 50;
+  const GIFT_R = 14;
+
+  // --- Etappen ------------------------------------------------------------
+  const STAGE_SECONDS = 35;
+  const STAGES = [
+    { name: 'Bludenz',   crossing: 4.5 },
+    { name: 'Feldkirch', crossing: 4.0 },
+    { name: 'Dornbirn',  crossing: 3.5 },
+    { name: 'Bregenz',   crossing: 3.0 },
+  ];
+  const TOTAL_SECONDS = STAGES.length * STAGE_SECONDS;  // 140
+  const BANNER = 2;        // Sekunden, die der Stadtname steht
+  const CLEAR_SPAN = 3;    // Sekunden freie Strecke ab jeder Etappengrenze
+
+  // --- Punkte -------------------------------------------------------------
+  const SCORE = {
+    perSecond: 10, perGift: 50, finish: 500, perHeart: 100, allGifts: 500,
+    max: 10 * TOTAL_SECONDS + 50 * GIFT_TOTAL + 500 + 100 * HEARTS + 500,  // 5200
+  };
+
+  const SEED = 20261224;
+
+  /** Scrollgeschwindigkeit der Etappe in Streckeneinheiten pro Sekunde. */
+  function rateFor(stage) {
+    return (FIELD.w - COW.x) / STAGES[stage].crossing;
+  }
+
+  return {
+    FIELD, COW, PHYS, STEP, HEARTS, INVULN, HIT_SHRINK, MIN_GAP, MAX_OBSTACLE_H,
+    GIFT_TOTAL, GIFT_R, STAGE_SECONDS, STAGES, TOTAL_SECONDS, BANNER, CLEAR_SPAN,
+    SCORE, SEED, rateFor,
+  };
+})();
+</script>
+
+<script id="game-app">
+'use strict';
+// wird in Aufgabe 7 gefuellt
+</script>
+</body>
+</html>
