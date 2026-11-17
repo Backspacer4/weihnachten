@@ -417,9 +417,9 @@ const GameLogic = (() => {
   }
 
   const OBSTACLE_KINDS = [
-    { boden: 'felszacken', decke: 'gondel' },      // Bludenz
+    { boden: 'felszacken', decke: 'schokolade' },  // Bludenz
     { boden: 'burgturm',   decke: 'eiszapfen' },   // Feldkirch
-    { boden: 'hausdach',   decke: 'seilbahn' },    // Dornbirn
+    { boden: 'hausdach',   decke: 'birne' },       // Dornbirn
     { boden: 'seebuehne',  decke: 'moewe' },       // Bregenz
   ];
 
@@ -911,7 +911,128 @@ function kulisse(stage, s) {
   else if (stage === 2) kulisseDornbirn(s);
   else kulisseBregenz(s);
 
+  einzelstuecke(stage, s);
   boden(stage, s);
+}
+
+/**
+ * Zeichnet etwas genau einmal auf der ganzen Strecke, an der Streckenposition
+ * zielVersatz -- nicht gekachelt wie der Rest der Kulisse. Beide Versaetze
+ * sind schon mit dem Parallaxe-Faktor der Ebene multipliziert, in der das
+ * Stueck stehen soll.
+ */
+function einmalig(versatz, zielVersatz, f) {
+  const x = zielVersatz - versatz;
+  if (x < -340 || x > L.FIELD.w + 340) return;
+  f(x);
+}
+
+/**
+ * Die Einzelstuecke: Dinge, die man genau einmal sieht und danach sucht.
+ * Alle stehen in der vorderen Kulissenebene (Faktor 0,26) und ziehen deshalb
+ * zuegig vorbei -- jedes taucht etwa sieben Sekunden nach Etappenbeginn auf.
+ */
+function einzelstuecke(stage, s) {
+  const v = s * 0.26;
+  if (stage === 0) einmalig(v, 5000 * 0.26, (x) => einhorn(x, 492));
+  else if (stage === 1) einmalig(v, 10500 * 0.26, (x) => montfortbanner(x, 490));
+  else if (stage === 2) einmalig(v, 17000 * 0.26, (x) => dfvHaus(x, 500));
+}
+
+/** Das Einhorn: genau eines auf der ganzen Strecke, in Bludenz. */
+function einhorn(x, basisY) {
+  ctx.fillStyle = '#f2f0f8';                           // Koerper
+  ctx.beginPath();
+  ctx.ellipse(x, basisY - 32, 24, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  [-14, -5, 7, 16].forEach((bx, i) => ctx.fillRect(x + bx, basisY - 20, 5, 20 - (i % 2) * 2));
+  ctx.beginPath();                                     // Hals
+  ctx.moveTo(x + 12, basisY - 40);
+  ctx.quadraticCurveTo(x + 30, basisY - 58, x + 34, basisY - 72);
+  ctx.lineTo(x + 44, basisY - 70);
+  ctx.quadraticCurveTo(x + 40, basisY - 52, x + 24, basisY - 34);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();                                     // Schnauze
+  ctx.ellipse(x + 42, basisY - 72, 9, 6, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Maehne und Schweif in Rosa -- damit niemand Muhdolf im Einhorn sieht
+  ctx.fillStyle = '#e887b9';
+  ctx.beginPath();
+  ctx.moveTo(x + 30, basisY - 76);
+  ctx.quadraticCurveTo(x + 14, basisY - 64, x + 10, basisY - 40);
+  ctx.quadraticCurveTo(x + 22, basisY - 52, x + 34, basisY - 66);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 24, basisY - 38);
+  ctx.quadraticCurveTo(x - 40, basisY - 30, x - 34, basisY - 10);
+  ctx.quadraticCurveTo(x - 28, basisY - 26, x - 20, basisY - 32);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ffd76a';                           // das Horn
+  ctx.beginPath();
+  ctx.moveTo(x + 36, basisY - 80);
+  ctx.lineTo(x + 41, basisY - 104);
+  ctx.lineTo(x + 45, basisY - 78);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * Das Montfortbanner: genau eines, in Feldkirch. Das Wappen der Grafen von
+ * Montfort und der Stadt Feldkirch -- eine rote Kirchenfahne auf Silber,
+ * mit drei Laetzen und Ringen.
+ */
+function montfortbanner(x, basisY) {
+  ctx.strokeStyle = '#2b2033';                         // Fahnenstange
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x, basisY);
+  ctx.lineTo(x, basisY - 174);
+  ctx.stroke();
+  ctx.fillStyle = '#eceff6';                           // silbernes Tuch
+  ctx.fillRect(x + 2, basisY - 170, 74, 98);
+  ctx.fillStyle = '#c0392b';                           // die Kirchenfahne
+  ctx.fillRect(x + 10, basisY - 162, 58, 18);
+  for (let i = 0; i < 3; i++) {
+    const lx = x + 19 + i * 20;
+    ctx.beginPath();
+    ctx.moveTo(lx - 6, basisY - 144);
+    ctx.lineTo(lx + 6, basisY - 144);
+    ctx.lineTo(lx + 3, basisY - 110);
+    ctx.lineTo(lx - 3, basisY - 110);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(lx, basisY - 106, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#ffd76a';                           // Knauf
+  ctx.beginPath();
+  ctx.arc(x, basisY - 178, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Ein Haus mit DFV am Giebel: genau eines, in Dornbirn. */
+function dfvHaus(x, basisY) {
+  ctx.fillStyle = '#241a2e';
+  ctx.fillRect(x, basisY - 104, 118, 104);
+  ctx.beginPath();                                     // Satteldach
+  ctx.moveTo(x - 8, basisY - 104);
+  ctx.lineTo(x + 59, basisY - 142);
+  ctx.lineTo(x + 126, basisY - 104);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';            // Schnee auf dem First
+  ctx.fillRect(x - 8, basisY - 107, 134, 5);
+  ctx.fillStyle = '#f4f7fd';
+  ctx.font = 'bold 34px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('DFV', x + 59, basisY - 54);
+  ctx.textAlign = 'start';                             // Voreinstellung zurueck
+  ctx.fillStyle = 'rgba(255,214,120,0.8)';             // erleuchtete Fenster
+  for (let i = 0; i < 3; i++) ctx.fillRect(x + 18 + i * 34, basisY - 36, 14, 16);
 }
 
 // Sterne: in Bludenz dicht und deutlich, in Feldkirch nur noch vereinzelt,
@@ -1438,19 +1559,59 @@ function hindernis(o, s) {
     ctx.fillRect(x - b / 2, L.FIELD.groundY - o.h, b, o.h);
     ctx.fillStyle = 'rgba(255,214,120,0.9)';
     for (let i = 0; i * 40 < o.h - 16; i++) ctx.fillRect(x - b / 2 + 4, L.FIELD.groundY - 20 - i * 40, b - 8, 5);
-  } else if (o.kind === 'gondel' || o.kind === 'seilbahn') {
-    ctx.strokeStyle = '#8e9bb5';                       // Seil
+  } else if (o.kind === 'schokolade') {
+    // Haengende Schokoladetafel. In Bludenz steht die Schokoladefabrik, und
+    // Muhdolf ist eine Kuh. Bewusst lila und nicht rot mit gelbem Band: so
+    // sieht sie nicht aus wie ein einsammelbares Geschenk -- sonst fliegt
+    // man absichtlich hinein.
+    ctx.strokeStyle = '#8e9bb5';                       // Schnur
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, o.h - 28);
+    ctx.lineTo(x, o.h - 40);
     ctx.stroke();
-    // Die Seilbahnkabine war mit #2d6a8f so hell wie der Sonnenaufgangshimmel
-    // in ihrer Hoehe. Dunkel gegen das Morgenrot ist sie auch das Richtige.
-    ctx.fillStyle = o.kind === 'gondel' ? '#c0392b' : '#17142b';
-    ctx.fillRect(x - b / 2, o.h - 30, b, 30);
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.fillRect(x - b / 2 + 5, o.h - 24, b - 10, 13);
+    const th = 42;
+    ctx.fillStyle = '#6f4ca0';                         // Papier
+    ctx.fillRect(x - b / 2, o.h - th, b, th);
+    ctx.fillStyle = '#3d2412';                         // aufgebrochene Tafel
+    ctx.fillRect(x - b / 2 + 4, o.h - th + 20, b - 8, th - 26);
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)';        // Rillen
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i < 4; i++) {
+      const rx = x - b / 2 + (i * b) / 4;
+      ctx.beginPath();
+      ctx.moveTo(rx, o.h - th + 21);
+      ctx.lineTo(rx, o.h - 7);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';          // Glanzkante
+    ctx.fillRect(x - b / 2, o.h - th, b, 4);
+  } else if (o.kind === 'birne') {
+    // Haengende Birne -- Dornbirn. Stiel von oben, Frucht am Ende, damit die
+    // Form bei jeder Hindernishoehe gleich bleibt und nicht gestreckt wird.
+    ctx.strokeStyle = '#5a4a2a';                       // Stiel
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, o.h - 46);
+    ctx.stroke();
+    const r = Math.min(b * 0.38, 26);
+    ctx.fillStyle = '#c3cf52';                         // Frucht
+    ctx.beginPath();
+    ctx.moveTo(x - 7, o.h - 52);
+    ctx.bezierCurveTo(x - 10, o.h - 34, x - r, o.h - 30, x - r, o.h - 18);
+    ctx.bezierCurveTo(x - r, o.h - 2, x + r, o.h - 2, x + r, o.h - 18);
+    ctx.bezierCurveTo(x + r, o.h - 30, x + 10, o.h - 34, x + 7, o.h - 52);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';          // Glanz
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.35, o.h - 22, r * 0.22, r * 0.38, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#4f7a35';                         // Blatt
+    ctx.beginPath();
+    ctx.ellipse(x + 12, o.h - 50, 11, 5, -0.5, 0, Math.PI * 2);
+    ctx.fill();
   } else if (o.kind === 'eiszapfen') {
     ctx.fillStyle = '#2a3f66';                         // Altstadtbogen
     ctx.fillRect(x - b / 2 - 6, 0, b + 12, 16);
@@ -1467,16 +1628,26 @@ function hindernis(o, s) {
       ctx.fill();
     }
   } else {                                             // moewe
+    // Groesser und dicht gestaffelt. Vorher standen zwei bis drei Moewen mit
+    // grossen Luecken im Hoehenband, obwohl die Trefferflaeche das ganze
+    // Rechteck ist: es sah passierbar aus und war es nicht. Die Spannweite
+    // richtet sich jetzt nach der Hindernisbreite, damit das Bild zur
+    // Trefferflaeche passt.
     ctx.fillStyle = '#eef3fa';
-    const anzahl = Math.max(2, Math.round(o.h / 90));
+    const spanne = b * 0.46;
+    // Die Anzahl haengt an der Vogelgroesse, nicht an einer festen Zahl:
+    // sonst bleiben bei schmalen Hindernissen Luecken, und genau die laden
+    // zum Durchfliegen ein. So ueberlappen die Voegel immer leicht.
+    const vogel = spanne * 0.82;                       // sichtbare Hoehe
+    const anzahl = Math.max(3, Math.ceil((o.h - 30) / (vogel * 0.85)) + 1);
     for (let i = 0; i < anzahl; i++) {
-      const my = 30 + (o.h - 40) * (i / Math.max(1, anzahl - 1));
-      const mx = x + ((i % 2) * 14 - 7);
+      const my = 18 + (o.h - 30) * (i / (anzahl - 1));
+      const mx = x + ((i % 2) * 8 - 4);
       ctx.beginPath();
-      ctx.moveTo(mx - 20, my);
-      ctx.quadraticCurveTo(mx - 8, my - 11, mx, my - 1);
-      ctx.quadraticCurveTo(mx + 8, my - 11, mx + 20, my);
-      ctx.quadraticCurveTo(mx, my + 7, mx - 20, my);
+      ctx.moveTo(mx - spanne, my);
+      ctx.quadraticCurveTo(mx - spanne * 0.4, my - spanne * 0.5, mx, my - spanne * 0.07);
+      ctx.quadraticCurveTo(mx + spanne * 0.4, my - spanne * 0.5, mx + spanne, my);
+      ctx.quadraticCurveTo(mx, my + spanne * 0.32, mx - spanne, my);
       ctx.fill();
     }
   }
