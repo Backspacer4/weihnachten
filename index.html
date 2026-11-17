@@ -531,7 +531,142 @@ const GameLogic = (() => {
 
 <script id="game-app">
 'use strict';
-// wird in Aufgabe 7 gefuellt
+
+const L = GameLogic;
+const canvas = document.getElementById('feld');
+const ctx = canvas.getContext('2d');
+
+let zustand = L.createState();
+let auftrieb = false;
+let pausiert = false;
+let laeuft = false;              // true, sobald losgeflogen wurde
+
+/**
+ * Passt das Canvas ans Fenster an. Das Spielfeld bleibt 960 x 540 logische
+ * Einheiten und wird einheitlich skaliert -- nur so sehen alle dasselbe und
+ * nur so sind die Punktzahlen vergleichbar.
+ */
+function vermessen() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const skala = Math.min(window.innerWidth / L.FIELD.w, window.innerHeight / L.FIELD.h);
+  const breite = Math.max(1, Math.floor(L.FIELD.w * skala));
+  const hoehe = Math.max(1, Math.floor(L.FIELD.h * skala));
+  canvas.style.width = breite + 'px';
+  canvas.style.height = hoehe + 'px';
+  canvas.width = Math.round(breite * dpr);
+  canvas.height = Math.round(hoehe * dpr);
+  ctx.setTransform(canvas.width / L.FIELD.w, 0, 0, canvas.height / L.FIELD.h, 0, 0);
+}
+
+vermessen();
+window.addEventListener('resize', vermessen);
+
+/**
+ * Alle Eingabequellen setzen dasselbe Flag. Die Spiellogik erfaehrt nie,
+ * ob der Auftrieb von einem Finger, der Maus oder der Leertaste kam.
+ */
+function auftriebAn(ereignis) {
+  if (ereignis && ereignis.target && ereignis.target.closest &&
+      ereignis.target.closest('button')) return;      // Knöpfe bleiben Knöpfe
+  auftrieb = true;
+}
+function auftriebAus() {
+  auftrieb = false;
+}
+
+window.addEventListener('pointerdown', auftriebAn);
+window.addEventListener('pointerup', auftriebAus);
+window.addEventListener('pointercancel', auftriebAus);
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault();                                // sonst scrollt die Seite
+    auftriebAn(e);
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') auftriebAus();
+});
+window.addEventListener('blur', auftriebAus);
+window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+let letzterRahmen = 0;
+let akku = 0;
+
+/**
+ * Ein Bild. Die Physik laeuft in festen Schritten von 1/120 s, unabhaengig
+ * von der Bildrate -- sonst fliegt Muhdolf auf einem 120-Hz-Handy doppelt so
+ * schnell wie auf einem 60-Hz-Laptop.
+ */
+function rahmen(jetzt) {
+  requestAnimationFrame(rahmen);
+  if (!letzterRahmen) letzterRahmen = jetzt;
+  let dt = (jetzt - letzterRahmen) / 1000;
+  letzterRahmen = jetzt;
+  if (dt > 0.25) dt = 0.25;
+
+  if (laeuft && !pausiert && zustand.phase === 'fliegt') {
+    akku += dt;
+    let schritte = 0;
+    while (akku >= L.STEP && schritte < 5) {
+      L.step(zustand, auftrieb, L.STEP);
+      akku -= L.STEP;
+      schritte += 1;
+    }
+    // Lief die Obergrenze voll, war das Fenster weg: aufgelaufene Zeit
+    // verwerfen statt sie in einem Rutsch nachzurechnen.
+    if (schritte === 5) akku = 0;
+    if (zustand.phase !== 'fliegt') laeuft = false;
+  }
+
+  zeichnen(zustand, dt);
+}
+
+requestAnimationFrame(rahmen);
+
+// --- Vorlaeufiges Zeichnen ----------------------------------------------
+// Aufgabe 8 ersetzt dies durch die Vorarlberg-Kulisse und die gezeichnete
+// Kuh. Bis dahin genuegen Kaesten, um das Spiel spielen und pruefen zu koennen.
+
+function zeichnen(z) {
+  // Himmel
+  ctx.fillStyle = '#2d4b7d';
+  ctx.fillRect(0, 0, L.FIELD.w, L.FIELD.groundY);
+  // Boden
+  ctx.fillStyle = '#eaf1fb';
+  ctx.fillRect(0, L.FIELD.groundY, L.FIELD.w, L.FIELD.h - L.FIELD.groundY);
+
+  // Hindernisse
+  ctx.fillStyle = '#16233d';
+  for (const o of z.obstacles) {
+    const x = o.s - z.s;
+    if (x < -120 || x > L.FIELD.w + 120) continue;
+    const y = o.from === 'boden' ? L.FIELD.groundY - o.h : 0;
+    ctx.fillRect(x - o.w / 2, y, o.w, o.h);
+  }
+
+  // Geschenke
+  ctx.fillStyle = '#e4b43c';
+  for (const g of z.gifts) {
+    if (g.taken) continue;
+    const x = g.s - z.s;
+    if (x < -40 || x > L.FIELD.w + 40) continue;
+    ctx.fillRect(x - L.GIFT_R, g.y - L.GIFT_R, L.GIFT_R * 2, L.GIFT_R * 2);
+  }
+
+  // Muhdolf
+  ctx.globalAlpha = z.invuln > 0 && Math.floor(z.invuln * 10) % 2 === 0 ? 0.4 : 1;
+  ctx.fillStyle = '#f7f9fc';
+  ctx.fillRect(L.COW.x - L.COW.w / 2, z.cowY - L.COW.h / 2, L.COW.w, L.COW.h);
+  ctx.globalAlpha = 1;
+
+  // Behelfsanzeige, bis Aufgabe 9 das HUD baut
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '20px system-ui, sans-serif';
+  ctx.fillText(`${z.score}  |  ${L.STAGES[z.stage].name}  |  ${'♥'.repeat(z.hearts)}  |  ${z.giftsTaken}/50  |  ${z.phase}`, 16, 30);
+}
+
+// Vorlaeufiger Start, bis Aufgabe 9 den Startbildschirm baut.
+laeuft = true;
 </script>
 </body>
 </html>
