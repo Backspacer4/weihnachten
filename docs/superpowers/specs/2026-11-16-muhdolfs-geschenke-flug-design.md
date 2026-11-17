@@ -302,7 +302,9 @@ ankommen.
 6. QR-Code mit einem echten Handy testen, bevor etwas gedruckt wird.
 
 Die URL sollte kurz und vorlesbar sein, damit sie auch am Laptop eingetippt werden
-kann. Vorschlag für den Repository-Namen: `muhdolf`.
+kann. Umgesetzt als `weihnachten`, die Seite liegt unter
+https://backspacer4.github.io/weihnachten/ — der Name verrät die Überraschung nicht
+und lässt sich nächstes Jahr weiterverwenden.
 
 ## Offene Punkte
 
