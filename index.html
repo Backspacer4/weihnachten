@@ -17,16 +17,36 @@
   #buehne { position: fixed; inset: 0; display: grid; place-items: center; }
   #feld { display: block; border-radius: 6px; }
 
+  /* Anzeige und Ortstafel liegen AUF dem Spielfeld, nicht am Fensterrand.
+     Im Hochformat ist das Feld nur ein Streifen in der Mitte -- am Fenster
+     ausgerichtet schwebte die Anzeige weit darueber im Rand.
+     --e ist ein Spielfeld-Punkt in Bildpunkten, gesetzt von vermessen(). */
+  #spielflaeche { position: relative; --e: 1px; }
+
   #hud {
-    position: fixed; inset: 0 0 auto 0; display: flex; align-items: center;
-    justify-content: space-between; gap: 12px;
-    padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+    position: absolute; inset: 0 0 auto 0; display: flex; align-items: center;
+    justify-content: space-between;
+    padding: calc(var(--e) * 14) calc(var(--e) * 18);
     font-variant-numeric: tabular-nums; pointer-events: none;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.65);
+    text-shadow: 0 calc(var(--e) * 2) calc(var(--e) * 6) rgba(0,0,0,0.8);
   }
-  #punkte { font-size: clamp(20px, 5vw, 30px); font-weight: 700; }
-  #stadt { font-size: clamp(13px, 3.4vw, 18px); letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.9; }
-  #herzen { font-size: clamp(16px, 4.4vw, 24px); color: #ff6b6b; }
+  #punkte { font-size: max(15px, calc(var(--e) * 30)); font-weight: 700; }
+  #herzen { font-size: max(14px, calc(var(--e) * 26)); color: #ff6b6b; }
+
+  /* Eine oesterreichische Ortstafel: weiss, dunkle Schrift, roter Rand. */
+  #ortstafel {
+    position: absolute; left: 50%; top: 13%; transform: translateX(-50%);
+    padding: calc(var(--e) * 7) calc(var(--e) * 20);
+    background: #f6f8fc; color: #15223a;
+    border: calc(var(--e) * 4) solid #c62828;
+    border-radius: calc(var(--e) * 5);
+    font-size: max(16px, calc(var(--e) * 34));
+    font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+    white-space: nowrap; pointer-events: none;
+    box-shadow: 0 calc(var(--e) * 6) calc(var(--e) * 16) rgba(0,0,0,0.5);
+    transition: opacity 0.35s ease-out;
+  }
+  #ortstafel[hidden] { display: none; }
 
   #schirm { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; }
   #schirm[hidden] { display: none; }
@@ -75,12 +95,15 @@
 </style>
 </head>
 <body>
-<div id="buehne"><canvas id="feld"></canvas></div>
-
-<div id="hud" hidden>
-  <div id="punkte">0</div>
-  <div id="stadt"></div>
-  <div id="herzen"></div>
+<div id="buehne">
+  <div id="spielflaeche">
+    <canvas id="feld"></canvas>
+    <div id="hud" hidden>
+      <div id="punkte">0</div>
+      <div id="herzen"></div>
+    </div>
+    <div id="ortstafel" hidden></div>
+  </div>
 </div>
 
 <div id="schirm">
@@ -134,7 +157,7 @@ const GameLogic = (() => {
   const COW = { w: 56, h: 40, x: 173 };
 
   // --- Flugphysik ---------------------------------------------------------
-  const PHYS = { gravity: 1400, lift: 2600, maxFall: 700, maxRise: 600 };
+  const PHYS = { gravity: 1400, lift: 2800, maxFall: 700, maxRise: 640 };
   const STEP = 1 / 120;
 
   // --- Spielregeln --------------------------------------------------------
@@ -633,6 +656,7 @@ const GameLogic = (() => {
 
 const L = GameLogic;
 const canvas = document.getElementById('feld');
+const spielflaeche = document.getElementById('spielflaeche');
 const ctx = canvas.getContext && canvas.getContext('2d');
 if (!ctx) {
   // Kein Canvas: Spiel verbergen, Botschaft zeigen. Sie ist der Zweck der Seite.
@@ -662,6 +686,10 @@ function vermessen() {
   canvas.width = Math.round(breite * dpr);
   canvas.height = Math.round(hoehe * dpr);
   ctx.setTransform(canvas.width / L.FIELD.w, 0, 0, canvas.height / L.FIELD.h, 0, 0);
+  // Anzeige und Ortstafel haengen an dieser Flaeche und skalieren mit ihr.
+  spielflaeche.style.width = breite + 'px';
+  spielflaeche.style.height = hoehe + 'px';
+  spielflaeche.style.setProperty('--e', (breite / L.FIELD.w) + 'px');
 }
 
 vermessen();
@@ -1275,7 +1303,7 @@ function zeichnen(z, dt) {
 const hud = document.getElementById('hud');
 const schirm = document.getElementById('schirm');
 const elPunkte = document.getElementById('punkte');
-const elStadt = document.getElementById('stadt');
+const elOrtstafel = document.getElementById('ortstafel');
 const elHerzen = document.getElementById('herzen');
 const schirmStart = document.getElementById('start');
 const schirmPause = document.getElementById('pause');
@@ -1315,8 +1343,14 @@ function zeigen(abschnitt) {
 
 function hudAktualisieren(z) {
   elPunkte.textContent = z.score;
-  elStadt.textContent = z.bannerLeft > 0 ? L.STAGES[z.stage].name : '';
   elHerzen.textContent = '♥'.repeat(z.hearts) + '♡'.repeat(L.HEARTS - z.hearts);
+  // Die Ortstafel steht die letzte halbe Sekunde ihrer Zeit verblassend da.
+  const sichtbar = z.bannerLeft > 0 && z.phase === 'fliegt';
+  if (sichtbar) {
+    elOrtstafel.textContent = L.STAGES[z.stage].name;
+    elOrtstafel.style.opacity = Math.min(1, z.bannerLeft / 0.5);
+  }
+  elOrtstafel.hidden = !sichtbar;
 }
 
 function startbildschirm() {
@@ -1362,6 +1396,7 @@ function flugBeendet() {
 
 function losfliegen() {
   zustand = L.createState();
+  zustand.bannerLeft = L.BANNER;      // auch Bludenz bekommt seine Ortstafel
   akku = 0;
   letzterRahmen = 0;
   auftrieb = false;
