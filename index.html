@@ -941,42 +941,78 @@ function einzelstuecke(stage, s) {
 
 /** Das Einhorn: genau eines auf der ganzen Strecke, in Bludenz. */
 function einhorn(x, basisY) {
-  ctx.fillStyle = '#f2f0f8';                           // Koerper
+  const weiss = '#f6f4fb';
+  ctx.fillStyle = weiss;
+  ctx.strokeStyle = weiss;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.lineWidth = 3;                                   // Schweif, drei Straehnen
+  for (const [dx, dy] of [[-4, -2], [-8, 4], [-3, 8]]) {
+    ctx.beginPath();
+    ctx.moveTo(x - 16, basisY - 30);
+    ctx.quadraticCurveTo(x - 30 + dx, basisY - 32 + dy, x - 28 + dx, basisY - 12 + dy);
+    ctx.stroke();
+  }
+
+  ctx.lineWidth = 5;                                   // Hinterbeine (Standbeine)
   ctx.beginPath();
-  ctx.ellipse(x, basisY - 32, 24, 15, 0, 0, Math.PI * 2);
+  ctx.moveTo(x - 12, basisY - 30);
+  ctx.lineTo(x - 2, basisY - 16);
+  ctx.lineTo(x - 8, basisY);
+  ctx.moveTo(x - 6, basisY - 34);
+  ctx.lineTo(x + 6, basisY - 18);
+  ctx.lineTo(x + 4, basisY);
+  ctx.stroke();
+
+  ctx.beginPath();                                     // Hinterhand
+  ctx.ellipse(x - 6, basisY - 34, 9, 8, 0, 0, Math.PI * 2);
   ctx.fill();
-  [-14, -5, 7, 16].forEach((bx, i) => ctx.fillRect(x + bx, basisY - 20, 5, 20 - (i % 2) * 2));
+  ctx.beginPath();                                     // aufgerichteter Koerper
+  ctx.ellipse(x + 2, basisY - 48, 22, 12, -1.0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.lineWidth = 4;                                   // erhobene Vorderbeine
+  ctx.beginPath();
+  ctx.moveTo(x + 14, basisY - 62);
+  ctx.lineTo(x + 26, basisY - 64);
+  ctx.lineTo(x + 28, basisY - 52);
+  ctx.moveTo(x + 10, basisY - 58);
+  ctx.lineTo(x + 22, basisY - 54);
+  ctx.lineTo(x + 20, basisY - 44);
+  ctx.stroke();
+
   ctx.beginPath();                                     // Hals
-  ctx.moveTo(x + 12, basisY - 40);
-  ctx.quadraticCurveTo(x + 30, basisY - 58, x + 34, basisY - 72);
-  ctx.lineTo(x + 44, basisY - 70);
-  ctx.quadraticCurveTo(x + 40, basisY - 52, x + 24, basisY - 34);
+  ctx.moveTo(x + 6, basisY - 62);
+  ctx.lineTo(x + 16, basisY - 68);
+  ctx.lineTo(x + 26, basisY - 86);
+  ctx.lineTo(x + 16, basisY - 90);
   ctx.closePath();
   ctx.fill();
-  ctx.beginPath();                                     // Schnauze
-  ctx.ellipse(x + 42, basisY - 72, 9, 6, -0.3, 0, Math.PI * 2);
+  ctx.beginPath();                                     // Kopf
+  ctx.ellipse(x + 26, basisY - 88, 10, 5.5, 0.6, 0, Math.PI * 2);
   ctx.fill();
-  // Maehne und Schweif in Rosa -- damit niemand Muhdolf im Einhorn sieht
-  ctx.fillStyle = '#e887b9';
-  ctx.beginPath();
-  ctx.moveTo(x + 30, basisY - 76);
-  ctx.quadraticCurveTo(x + 14, basisY - 64, x + 10, basisY - 40);
-  ctx.quadraticCurveTo(x + 22, basisY - 52, x + 34, basisY - 66);
+  ctx.beginPath();                                     // Ohr
+  ctx.moveTo(x + 17, basisY - 94);
+  ctx.lineTo(x + 15, basisY - 101);
+  ctx.lineTo(x + 21, basisY - 96);
   ctx.closePath();
   ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(x - 24, basisY - 38);
-  ctx.quadraticCurveTo(x - 40, basisY - 30, x - 34, basisY - 10);
-  ctx.quadraticCurveTo(x - 28, basisY - 26, x - 20, basisY - 32);
+  ctx.beginPath();                                     // das Horn
+  ctx.moveTo(x + 19, basisY - 92);
+  ctx.lineTo(x + 36, basisY - 113);
+  ctx.lineTo(x + 24, basisY - 94);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = '#ffd76a';                           // das Horn
-  ctx.beginPath();
-  ctx.moveTo(x + 36, basisY - 80);
-  ctx.lineTo(x + 41, basisY - 104);
-  ctx.lineTo(x + 45, basisY - 78);
-  ctx.closePath();
-  ctx.fill();
+
+  ctx.lineWidth = 2.5;                                 // Maehne
+  for (let t = 0.15; t < 0.95; t += 0.18) {
+    const px = x + 6 + 10 * t, py = basisY - 62 - 28 * t;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.quadraticCurveTo(px - 4, py - 2, px - 8, py + 4);
+    ctx.stroke();
+  }
 }
 
 /**
@@ -991,23 +1027,57 @@ function montfortbanner(x, basisY) {
   ctx.moveTo(x, basisY);
   ctx.lineTo(x, basisY - 174);
   ctx.stroke();
-  ctx.fillStyle = '#eceff6';                           // silbernes Tuch
-  ctx.fillRect(x + 2, basisY - 170, 74, 98);
-  ctx.fillStyle = '#c0392b';                           // die Kirchenfahne
-  ctx.fillRect(x + 10, basisY - 162, 58, 18);
-  for (let i = 0; i < 3; i++) {
-    const lx = x + 19 + i * 20;
+
+  ctx.fillStyle = '#eceff6';                           // silbernes Tuch (Schildform)
+  ctx.beginPath();
+  ctx.moveTo(x + 2, basisY - 170);
+  ctx.lineTo(x + 76, basisY - 170);
+  ctx.lineTo(x + 76, basisY - 105);
+  ctx.quadraticCurveTo(x + 76, basisY - 80, x + 39, basisY - 66);
+  ctx.quadraticCurveTo(x + 2, basisY - 80, x + 2, basisY - 105);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#a9b0c0';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Kirchenfahne: in 260×378-Einheiten gezeichnet, auf das Tuch skaliert
+  ctx.save();
+  ctx.translate(x + 8, basisY - 166);
+  ctx.scale(0.238, 0.238);
+  const rot = '#c0392b', linie = '#2b2033';
+
+  for (const rx of [22, 130, 238]) {                   // drei Ringe
     ctx.beginPath();
-    ctx.moveTo(lx - 6, basisY - 144);
-    ctx.lineTo(lx + 6, basisY - 144);
-    ctx.lineTo(lx + 3, basisY - 110);
-    ctx.lineTo(lx - 3, basisY - 110);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(lx, basisY - 106, 4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(rx, 22, 16, 0, Math.PI * 2);
+    ctx.strokeStyle = linie; ctx.lineWidth = 12; ctx.stroke();
+    ctx.strokeStyle = rot;   ctx.lineWidth = 8;  ctx.stroke();
   }
+
+  ctx.beginPath();                                     // Balken + drei Lätze
+  ctx.moveTo(0, 45);    ctx.lineTo(260, 45);
+  ctx.lineTo(260, 290); ctx.lineTo(202, 290);
+  ctx.lineTo(202, 178); ctx.lineTo(158, 178);
+  ctx.lineTo(158, 350); ctx.lineTo(101, 350);
+  ctx.lineTo(101, 178); ctx.lineTo(58, 178);
+  ctx.lineTo(58, 290);  ctx.lineTo(0, 290);
+  ctx.closePath();
+  ctx.fillStyle = rot; ctx.fill();
+  ctx.strokeStyle = linie; ctx.lineWidth = 4; ctx.stroke();
+
+  ctx.strokeRect(28, 65, 202, 87);                     // inneres Rechteck
+
+  ctx.strokeStyle = rot; ctx.lineWidth = 4;            // Fransen
+  for (const [l, r, y] of [[0, 58, 290], [101, 158, 350], [202, 260, 290]]) {
+    for (let fx = l + 5; fx <= r - 4; fx += 8) {
+      ctx.beginPath();
+      ctx.moveTo(fx, y);
+      ctx.bezierCurveTo(fx + 4, y + 9, fx - 4, y + 19, fx, y + 28);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
   ctx.fillStyle = '#ffd76a';                           // Knauf
   ctx.beginPath();
   ctx.arc(x, basisY - 178, 5, 0, Math.PI * 2);
@@ -1564,28 +1634,51 @@ function hindernis(o, s) {
     // Muhdolf ist eine Kuh. Bewusst lila und nicht rot mit gelbem Band: so
     // sieht sie nicht aus wie ein einsammelbares Geschenk -- sonst fliegt
     // man absichtlich hinein.
+    const th = 42, T = o.h - th, lx = x - b / 2;
+
     ctx.strokeStyle = '#8e9bb5';                       // Schnur
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, o.h - 40);
+    ctx.lineTo(x, T);
     ctx.stroke();
-    const th = 42;
-    ctx.fillStyle = '#6f4ca0';                         // Papier
-    ctx.fillRect(x - b / 2, o.h - th, b, th);
-    ctx.fillStyle = '#3d2412';                         // aufgebrochene Tafel
-    ctx.fillRect(x - b / 2 + 4, o.h - th + 20, b - 8, th - 26);
-    ctx.strokeStyle = 'rgba(255,255,255,0.32)';        // Rillen
-    ctx.lineWidth = 1.5;
-    for (let i = 1; i < 4; i++) {
-      const rx = x - b / 2 + (i * b) / 4;
-      ctx.beginPath();
-      ctx.moveTo(rx, o.h - th + 21);
-      ctx.lineTo(rx, o.h - 7);
-      ctx.stroke();
+
+    ctx.fillStyle = '#3d2412';                         // Schokolade (Grund)
+    ctx.fillRect(lx, T + 14, b, th - 14);
+    const top = T + 20, qw = b / 4, qh = (o.h - top) / 2;
+    for (let r = 0; r < 2; r++) {                      // 4 x 2 Rippen
+      for (let c = 0; c < 4; c++) {
+        const qx = lx + c * qw, qy = top + r * qh;
+        ctx.fillStyle = '#5b3a22';                     // Rippe
+        ctx.fillRect(qx + 2, qy + 2, qw - 4, qh - 4);
+        ctx.fillStyle = '#7d5232';                     // Lichtkante oben/links
+        ctx.fillRect(qx + 2, qy + 2, qw - 4, 1.5);
+        ctx.fillRect(qx + 2, qy + 2, 1.5, qh - 4);
+        ctx.fillStyle = '#2a170a';                     // Schattenkante unten/rechts
+        ctx.fillRect(qx + 2, qy + qh - 3.5, qw - 4, 1.5);
+        ctx.fillRect(qx + qw - 3.5, qy + 2, 1.5, qh - 4);
+      }
     }
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';          // Glanzkante
-    ctx.fillRect(x - b / 2, o.h - th, b, 4);
+
+    ctx.fillStyle = '#d3d8e2';                         // Silberfolie, gerissen
+    ctx.beginPath();
+    ctx.moveTo(lx, T + 12);
+    for (let i = 0; i <= b; i += 4) ctx.lineTo(lx + i, T + ((i / 4) % 2 ? 17 : 22));
+    ctx.lineTo(lx + b, T + 12);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#6f4ca0';                         // Papier, gerissen
+    ctx.beginPath();
+    ctx.moveTo(lx, T);
+    ctx.lineTo(lx + b, T);
+    for (let i = b; i >= 0; i -= 5) ctx.lineTo(lx + i, T + ((i / 5) % 2 ? 14 : 17));
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#5a3b88';                         // Falz oben
+    ctx.fillRect(lx, T, b, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';          // Etikettstreifen
+    ctx.fillRect(lx + 5, T + 8, b - 10, 2);
   } else if (o.kind === 'birne') {
     // Haengende Birne -- Dornbirn. Stiel von oben, Frucht am Ende, damit die
     // Form bei jeder Hindernishoehe gleich bleibt und nicht gestreckt wird.
