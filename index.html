@@ -30,6 +30,11 @@
 
   #schirm { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; }
   #schirm[hidden] { display: none; }
+  #rueckfall { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; }
+  #rueckfall[hidden] { display: none; }
+  #botschaftRueckfall {
+    margin: 16px 0 0; font-size: clamp(17px, 5vw, 24px); font-weight: 700;
+  }
   .karte {
     width: min(460px, 100%); max-height: 100%; overflow: auto;
     padding: clamp(18px, 5vw, 32px); border-radius: 18px; text-align: center;
@@ -105,6 +110,14 @@
     <p id="botschaft">Frohe Weihnachten wünschen Mona und Michi</p>
     <button id="nochmalButton" type="button">Nochmal fliegen</button>
   </section>
+</div>
+
+<div id="rueckfall" hidden>
+  <div class="karte">
+    <h2>Muhdolfs Geschenke-Flug</h2>
+    <p class="anleitung">Dieser Browser kann das Spiel leider nicht zeichnen. Die Hauptsache geht aber auch so:</p>
+    <p id="botschaftRueckfall">Frohe Weihnachten wünschen Mona und Michi</p>
+  </div>
 </div>
 
 <noscript>
@@ -620,7 +633,14 @@ const GameLogic = (() => {
 
 const L = GameLogic;
 const canvas = document.getElementById('feld');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext && canvas.getContext('2d');
+if (!ctx) {
+  // Kein Canvas: Spiel verbergen, Botschaft zeigen. Sie ist der Zweck der Seite.
+  document.getElementById('buehne').hidden = true;
+  document.getElementById('schirm').hidden = true;
+  document.getElementById('rueckfall').hidden = false;
+  throw new Error('Canvas 2D steht nicht zur Verfuegung');
+}
 
 let zustand = L.createState();
 let auftrieb = false;
@@ -645,7 +665,6 @@ function vermessen() {
 }
 
 vermessen();
-window.addEventListener('resize', vermessen);
 
 /**
  * Alle Eingabequellen setzen dasselbe Flag. Die Spiellogik erfaehrt nie,
@@ -1360,6 +1379,45 @@ document.getElementById('weiterButton').addEventListener('click', () => {
 });
 
 startbildschirm();
+
+// --- Pause und Neuvermessung --------------------------------------------
+
+/** Pausiert einen laufenden Flug, wenn das Fenster in den Hintergrund geht. */
+function pausieren() {
+  if (!laeuft || pausiert || zustand.phase !== 'fliegt') return;
+  pausiert = true;
+  auftrieb = false;
+  akku = 0;
+  zeigen(schirmPause);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pausieren();
+});
+window.addEventListener('pagehide', pausieren);
+
+// Drehung und Groessenaenderung: neu vermessen und pausieren statt abbrechen.
+window.addEventListener('resize', () => {
+  vermessen();
+  elDrehhinweis.hidden = window.innerWidth >= window.innerHeight;
+  pausieren();
+});
+
+// Aus der Pause heraus geht es auf Tippen oder Leertaste weiter.
+window.addEventListener('pointerdown', (e) => {
+  if (pausiert && !(e.target.closest && e.target.closest('button'))) {
+    pausiert = false;
+    letzterRahmen = 0;
+    zeigen(null);
+  }
+});
+window.addEventListener('keydown', (e) => {
+  if (pausiert && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter')) {
+    pausiert = false;
+    letzterRahmen = 0;
+    zeigen(null);
+  }
+});
 </script>
 </body>
 </html>
