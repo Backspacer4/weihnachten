@@ -2281,11 +2281,28 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', pausieren);
 
+/** Setzt einen pausierten Flug fort. */
+function fortsetzen() {
+  if (!pausiert) return;
+  pausiert = false;
+  letzterRahmen = 0;
+  zuletztFortgesetzt = performance.now();
+  zeigen(null);
+}
+
 // Drehung und Groessenaenderung: neu vermessen und pausieren statt abbrechen.
+//
+// Aber nicht jede Groessenaenderung ist eine echte: Handy-Browser blenden beim
+// ersten Tippen gern ihre Adressleiste ein, und das aendert die Fensterhoehe.
+// Ohne die Schonfrist pausierte das Spiel genau in dem Augenblick wieder, in
+// dem der Spieler es fortgesetzt hat -- das fuehlte sich wie ein Fehler an.
+const SCHONFRIST = 700;                   // Millisekunden nach dem Fortsetzen
+let zuletztFortgesetzt = 0;
+
 window.addEventListener('resize', () => {
   vermessen();
   elDrehhinweis.hidden = window.innerWidth >= window.innerHeight;
-  pausieren();
+  if (performance.now() - zuletztFortgesetzt > SCHONFRIST) pausieren();
 });
 
 // Aus der Pause heraus geht es auf Tippen oder Leertaste weiter.
