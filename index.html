@@ -16,14 +16,100 @@
   }
   #buehne { position: fixed; inset: 0; display: grid; place-items: center; }
   #feld { display: block; border-radius: 6px; }
+
+  #hud {
+    position: fixed; inset: 0 0 auto 0; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px;
+    padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+    font-variant-numeric: tabular-nums; pointer-events: none;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.65);
+  }
+  #punkte { font-size: clamp(20px, 5vw, 30px); font-weight: 700; }
+  #stadt { font-size: clamp(13px, 3.4vw, 18px); letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.9; }
+  #herzen { font-size: clamp(16px, 4.4vw, 24px); color: #ff6b6b; }
+
+  #schirm { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; }
+  #schirm[hidden] { display: none; }
+  .karte {
+    width: min(460px, 100%); max-height: 100%; overflow: auto;
+    padding: clamp(18px, 5vw, 32px); border-radius: 18px; text-align: center;
+    background: rgba(10, 20, 40, 0.93);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.5);
+  }
+  .karte h1 { margin: 0 0 4px; font-size: clamp(22px, 6.4vw, 34px); line-height: 1.15; }
+  .karte h2 { margin: 0 0 8px; font-size: clamp(20px, 5.4vw, 26px); }
+  .unter { margin: 0 0 14px; opacity: 0.75; font-size: clamp(13px, 3.6vw, 16px); }
+  .anleitung { margin: 10px 0; font-size: clamp(13px, 3.6vw, 16px); line-height: 1.5; opacity: 0.92; }
+  .klein { margin: 10px 0 0; font-size: clamp(12px, 3.2vw, 14px); opacity: 0.7; }
+
+  #endePunkte { margin: 6px 0 14px; }
+  #endePunkte strong { font-size: clamp(38px, 12vw, 64px); font-weight: 800; letter-spacing: -0.02em; }
+  #endePunkte span { font-size: clamp(13px, 3.6vw, 16px); opacity: 0.65; }
+  #endeDetails {
+    margin: 0 0 16px; padding: 0; list-style: none; display: grid; gap: 6px;
+    font-size: clamp(13px, 3.6vw, 16px);
+  }
+  #endeDetails li { display: flex; justify-content: space-between; gap: 16px; opacity: 0.9; }
+  #endeDetails b { font-variant-numeric: tabular-nums; }
+
+  #botschaft {
+    margin: 18px 0 20px; padding: 14px 10px; border-radius: 12px;
+    font-size: clamp(17px, 5vw, 24px); font-weight: 700; line-height: 1.35;
+    background: linear-gradient(135deg, rgba(198,40,40,0.3), rgba(46,125,50,0.3));
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+
+  button {
+    appearance: none; cursor: pointer; font: inherit; font-weight: 700;
+    padding: 14px 26px; min-height: 48px; border-radius: 999px; border: 0;
+    color: #16233d; background: linear-gradient(180deg, #ffe08a, #e9b949);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  }
+  button:active { transform: translateY(1px); }
 </style>
 </head>
 <body>
 <div id="buehne"><canvas id="feld"></canvas></div>
 
+<div id="hud" hidden>
+  <div id="punkte">0</div>
+  <div id="stadt"></div>
+  <div id="herzen"></div>
+</div>
+
+<div id="schirm">
+  <section id="start" class="karte">
+    <h1>Muhdolfs Geschenke-Flug</h1>
+    <p class="unter">Von Bludenz nach Bregenz</p>
+    <p class="anleitung">
+      <strong>Halten</strong> zum Steigen &mdash; <strong>loslassen</strong> zum Sinken.<br>
+      Finger, Maustaste oder Leertaste.
+    </p>
+    <p class="anleitung">Geschenke einsammeln, Bergen und Dächern ausweichen. Drei Herzen.</p>
+    <p id="rekordzeile" class="klein" hidden></p>
+    <p id="drehhinweis" class="klein" hidden>Im Querformat fliegt es sich schöner &mdash; dreh das Handy einmal.</p>
+    <button id="losButton" type="button">Losfliegen</button>
+  </section>
+
+  <section id="pause" class="karte" hidden>
+    <h2>Pause</h2>
+    <p class="anleitung">Tippen oder Leertaste, und es geht weiter.</p>
+    <button id="weiterButton" type="button">Weiterfliegen</button>
+  </section>
+
+  <section id="ende" class="karte" hidden>
+    <p id="endeTitel" class="unter"></p>
+    <p id="endePunkte"><strong>0</strong> <span>von 5200</span></p>
+    <ul id="endeDetails"></ul>
+    <p id="botschaft">Frohe Weihnachten wünschen Mona und Michi</p>
+    <button id="nochmalButton" type="button">Nochmal fliegen</button>
+  </section>
+</div>
+
 <noscript>
   <p>Fuer das Spiel braucht es JavaScript. Aber die Hauptsache geht auch ohne:</p>
-  <p><strong>Frohe Weihnachten wuenschen Mona und Michi</strong></p>
+  <p><strong>Frohe Weihnachten wünschen Mona und Michi</strong></p>
 </noscript>
 
 <script id="game-logic">
@@ -615,10 +701,14 @@ function rahmen(jetzt) {
     // Lief die Obergrenze voll, war das Fenster weg: aufgelaufene Zeit
     // verwerfen statt sie in einem Rutsch nachzurechnen.
     if (schritte === 5) akku = 0;
-    if (zustand.phase !== 'fliegt') laeuft = false;
+    if (zustand.phase !== 'fliegt') {
+      laeuft = false;
+      flugBeendet();
+    }
   }
 
   zeichnen(zustand, dt);
+  hudAktualisieren(zustand);
 }
 
 requestAnimationFrame(rahmen);
@@ -1161,8 +1251,115 @@ function zeichnen(z, dt) {
   schnee(dt);
 }
 
-// Vorlaeufiger Start, bis Aufgabe 9 den Startbildschirm baut.
-laeuft = true;
+// --- Anzeige und Bildschirme --------------------------------------------
+
+const hud = document.getElementById('hud');
+const schirm = document.getElementById('schirm');
+const elPunkte = document.getElementById('punkte');
+const elStadt = document.getElementById('stadt');
+const elHerzen = document.getElementById('herzen');
+const schirmStart = document.getElementById('start');
+const schirmPause = document.getElementById('pause');
+const schirmEnde = document.getElementById('ende');
+const elRekordzeile = document.getElementById('rekordzeile');
+const elDrehhinweis = document.getElementById('drehhinweis');
+const elEndeTitel = document.getElementById('endeTitel');
+const elEndePunkte = document.querySelector('#endePunkte strong');
+const elEndeMax = document.querySelector('#endePunkte span');
+const elEndeDetails = document.getElementById('endeDetails');
+
+const REKORD_SCHLUESSEL = 'muhdolf.rekord';
+
+/** Liest den Rekord. Im Privat-Modus ist der Speicher gesperrt -- dann eben 0. */
+function rekordLesen() {
+  try {
+    const n = parseInt(window.localStorage.getItem(REKORD_SCHLUESSEL), 10);
+    return Number.isFinite(n) && n >= 0 && n <= L.SCORE.max ? n : 0;
+  } catch (fehler) {
+    return 0;
+  }
+}
+
+function rekordSchreiben(punkte) {
+  try {
+    window.localStorage.setItem(REKORD_SCHLUESSEL, String(punkte));
+  } catch (fehler) {
+    /* gesperrt oder voll: das Spiel laeuft trotzdem weiter */
+  }
+}
+
+function zeigen(abschnitt) {
+  for (const s of [schirmStart, schirmPause, schirmEnde]) s.hidden = s !== abschnitt;
+  schirm.hidden = abschnitt === null;
+  hud.hidden = abschnitt !== null && abschnitt !== schirmPause;
+}
+
+function hudAktualisieren(z) {
+  elPunkte.textContent = z.score;
+  elStadt.textContent = z.bannerLeft > 0 ? L.STAGES[z.stage].name : '';
+  elHerzen.textContent = '♥'.repeat(z.hearts) + '♡'.repeat(L.HEARTS - z.hearts);
+}
+
+function startbildschirm() {
+  const rekord = rekordLesen();
+  elRekordzeile.hidden = rekord === 0;
+  elRekordzeile.textContent = `Dein Rekord: ${rekord} von ${L.SCORE.max} Punkten`;
+  elDrehhinweis.hidden = window.innerWidth >= window.innerHeight;
+  zeigen(schirmStart);
+}
+
+/** Der Endbildschirm: alles, was man vergleichen will, auf einen Blick. */
+function flugBeendet() {
+  const z = zustand;
+  const geschafft = z.phase === 'ziel';
+  const rekordVorher = rekordLesen();
+  if (z.score > rekordVorher) rekordSchreiben(z.score);
+
+  elEndeTitel.textContent = geschafft
+    ? 'Bregenz erreicht — die Geschenke sind zugestellt.'
+    : `Abgestürzt in ${L.STAGES[z.stage].name}.`;
+  elEndePunkte.textContent = z.score;
+  elEndeMax.textContent = `von ${L.SCORE.max}`;
+
+  const zeilen = [
+    ['Geschenke', `${z.giftsTaken} von ${L.GIFT_TOTAL}`],
+    ['Herzen übrig', `${z.hearts} von ${L.HEARTS}`],
+    ['Weit gekommen bis', geschafft ? 'Bregenz' : L.STAGES[z.stage].name],
+    ['Dein Rekord', `${Math.max(rekordVorher, z.score)}`],
+  ];
+  if (z.score > rekordVorher && rekordVorher > 0) zeilen.push(['', 'Neuer Rekord!']);
+  elEndeDetails.innerHTML = '';
+  for (const [name, wert] of zeilen) {
+    const li = document.createElement('li');
+    const links = document.createElement('span');
+    links.textContent = name;
+    const rechts = document.createElement('b');
+    rechts.textContent = wert;
+    li.append(links, rechts);
+    elEndeDetails.append(li);
+  }
+  zeigen(schirmEnde);
+}
+
+function losfliegen() {
+  zustand = L.createState();
+  akku = 0;
+  letzterRahmen = 0;
+  auftrieb = false;
+  pausiert = false;
+  laeuft = true;
+  zeigen(null);
+}
+
+document.getElementById('losButton').addEventListener('click', losfliegen);
+document.getElementById('nochmalButton').addEventListener('click', losfliegen);
+document.getElementById('weiterButton').addEventListener('click', () => {
+  pausiert = false;
+  letzterRahmen = 0;
+  zeigen(null);
+});
+
+startbildschirm();
 </script>
 </body>
 </html>
