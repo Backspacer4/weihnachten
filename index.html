@@ -30,6 +30,16 @@
     font-variant-numeric: tabular-nums; pointer-events: none;
     text-shadow: 0 calc(var(--e) * 2) calc(var(--e) * 6) rgba(0,0,0,0.8);
   }
+  /* Ueber dem hellen Morgenhimmel in Bregenz (Helligkeit 0,40 in Hoehe der
+     Anzeige) reicht weisser Text nicht mehr: das Verhaeltnis waere 2,4 : 1.
+     Das dunkle Feld drueckt den Grund auf 0,17 und das Verhaeltnis auf
+     4,8 : 1 -- lesbar auf allen vier Etappen, auch wenn das Feld im
+     Hochformat so klein wird, dass die Schrift auf 15 px faellt. */
+  #punkte, #herzen {
+    padding: calc(var(--e) * 3) calc(var(--e) * 13);
+    border-radius: 999px;
+    background: rgba(7, 13, 26, 0.66);
+  }
   #punkte { font-size: max(15px, calc(var(--e) * 30)); font-weight: 700; }
   #herzen { font-size: max(14px, calc(var(--e) * 26)); color: #ff6b6b; }
 
@@ -795,14 +805,14 @@ function bergZug(versatz, periode, basisY, gipfel, farbe, schnee) {
   });
 }
 
-/** Eine Reihe Giebelhaeuser. */
-function dachzeile(versatz, periode, basisY, farbe) {
+/** Eine Reihe Giebelhaeuser, auf Wunsch mit erleuchteten Fenstern. */
+function dachzeile(versatz, periode, basisY, farbe, fenster) {
   kachel(versatz, periode, (x0) => {
-    ctx.fillStyle = farbe;
     for (let i = 0; i < 4; i++) {
       const x = x0 + i * (periode / 4);
       const b = periode / 4 - 8;
       const h = 44 + ((i * 17) % 30);
+      ctx.fillStyle = farbe;
       ctx.fillRect(x, basisY - h, b, h);
       ctx.beginPath();
       ctx.moveTo(x - 4, basisY - h);
@@ -810,32 +820,25 @@ function dachzeile(versatz, periode, basisY, farbe) {
       ctx.lineTo(x + b + 4, basisY - h);
       ctx.closePath();
       ctx.fill();
+      if (!fenster) continue;
+      ctx.fillStyle = 'rgba(255,206,128,0.72)';
+      for (let k = 0; k < 3; k++) {
+        if ((i + k) % 2 === 0) continue;               // nicht hinter jedem Fenster brennt Licht
+        ctx.fillRect(x + 12 + k * (b / 3), basisY - h + 16, 10, 12);
+      }
     }
   });
 }
 
-/** Turm mit Dach: 'spitz', 'zwiebel' oder 'zinnen'. */
+/** Turm mit Dach: 'zinnen' oder 'rund'. */
 function turm(x, basisY, breite, hoehe, farbe, dach) {
   ctx.fillStyle = farbe;
   ctx.fillRect(x, basisY - hoehe, breite, hoehe);
   const oben = basisY - hoehe;
-  if (dach === 'spitz') {
+  if (dach === 'rund') {
     ctx.beginPath();
-    ctx.moveTo(x - 5, oben);
-    ctx.lineTo(x + breite / 2, oben - breite * 1.4);
-    ctx.lineTo(x + breite + 5, oben);
-    ctx.closePath();
+    ctx.ellipse(x + breite / 2, oben, breite / 2 + 4, 20, 0, Math.PI, Math.PI * 2);
     ctx.fill();
-  } else if (dach === 'zwiebel') {
-    ctx.beginPath();
-    ctx.moveTo(x - 3, oben);
-    ctx.bezierCurveTo(x - 10, oben - breite * 0.8, x + breite / 2 - 6, oben - breite * 1.1,
-      x + breite / 2, oben - breite * 1.3);
-    ctx.bezierCurveTo(x + breite / 2 + 6, oben - breite * 1.1, x + breite + 10, oben - breite * 0.8,
-      x + breite + 3, oben);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillRect(x + breite / 2 - 1, oben - breite * 1.6, 2, breite * 0.3);
   } else {
     for (let i = 0; i < 4; i++) ctx.fillRect(x + i * (breite / 4), oben - 8, breite / 6, 8);
   }
@@ -859,19 +862,38 @@ function tanne(x, basisY, hoehe, farbe) {
 
 // --- Kulissen -----------------------------------------------------------
 
+/**
+ * Muhdolf fliegt in den Morgen hinein. Darum hat jede Etappe einen eigenen
+ * Grundton: Indigo, Violett, Orange, Tuerkis. Der Farbwechsel traegt den
+ * groessten Teil der Unterscheidbarkeit -- die Wahrzeichen bestaetigen nur,
+ * was die Farbe schon gesagt hat. Je Etappe: oben, Mitte, Horizont.
+ */
 const HIMMEL = [
-  ['#0e1d3c', '#294574', '#6480b4'],   // Bludenz: tiefe Bergnacht
-  ['#16274a', '#365284', '#7a90bf'],   // Feldkirch
-  ['#1c2e53', '#44608d', '#93a6cb'],   // Dornbirn
-  ['#243760', '#5a7398', '#b6c4dd'],   // Bregenz: Morgen am See
+  ['#060d1e', '#121f3d', '#2c3d64'],   // Bludenz: tiefe Bergnacht
+  ['#1a1333', '#452c5e', '#95627f'],   // Feldkirch: erste Daemmerung
+  ['#3a2347', '#9c4a53', '#eb9560'],   // Dornbirn: Sonnenaufgang
+  ['#2a5f8f', '#74adca', '#d6e6ec'],   // Bregenz: heller Morgen am See
 ];
 
-// Gipfelzuege: [Abstand vom Kachelanfang, Hoehe ueber der Basislinie]
-const RAETIKON = [[0, 60], [90, 210], [180, 120], [280, 300], [380, 160],
-  [470, 250], [560, 130], [660, 230], [760, 90], [860, 170]];
-const ZIMBA = [[0, 40], [110, 150], [220, 300], [300, 120], [400, 210],
-  [520, 100], [620, 180], [720, 70]];
-const HUEGEL = [[0, 40], [120, 110], [240, 70], [380, 130], [500, 80], [620, 120], [740, 50]];
+// Gipfelzuege: [Abstand vom Kachelanfang, Hoehe ueber der Basislinie].
+// Die Perioden liegen bei 600 bis 700 Einheiten -- schmaler als das Feld,
+// damit jedes Wahrzeichen mindestens einmal pro Bildschirmbreite auftaucht.
+const RAETIKON = [[0, 70], [70, 205], [150, 135], [240, 290], [330, 175],
+  [420, 245], [510, 120], [580, 195]];
+const SCHESAPLANA = [[0, 70], [110, 190], [215, 262], [320, 240], [420, 150], [520, 195]];
+const HUEGEL = [[0, 40], [110, 120], [220, 75], [340, 140], [450, 85], [560, 125]];
+
+/**
+ * Setzt die Deckkraft unter die laufende -- multiplikativ, nicht absolut.
+ * Beim Etappenwechsel liegt schon eine Deckkraft an (das Ueberblenden in
+ * zeichnen). Wer sie hart auf 1 zuruecksetzt, zerstoert die Ueberblendung.
+ */
+function mitDeckkraft(a, f) {
+  ctx.save();
+  ctx.globalAlpha *= a;
+  f();
+  ctx.restore();
+}
 
 /** Zeichnet die Kulisse einer Etappe zur Streckenposition s. */
 function kulisse(stage, s) {
@@ -892,183 +914,480 @@ function kulisse(stage, s) {
   boden(stage, s);
 }
 
-/** Sterne, in den spaeteren Etappen immer blasser -- es wird Morgen. */
+// Sterne: in Bludenz dicht und deutlich, in Feldkirch nur noch vereinzelt,
+// ab Dornbirn gar keine mehr. [Anzahl, Deckkraft]
+const STERNE = [[64, 0.9], [20, 0.4], [0, 0], [0, 0]];
+
+/** Sterne, nach Etappe. Es wird Morgen, also werden sie weniger. */
 function sterne(stage) {
-  ctx.globalAlpha = 0.5 - stage * 0.12;
-  if (ctx.globalAlpha <= 0) { ctx.globalAlpha = 1; return; }
-  ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < 46; i++) {
-    const x = (i * 137) % L.FIELD.w;
-    const y = (i * 71) % 220;
-    ctx.fillRect(x, y, 2, 2);
-  }
-  ctx.globalAlpha = 1;
+  const [anzahl, deckkraft] = STERNE[stage];
+  if (anzahl === 0) return;
+  mitDeckkraft(deckkraft, () => {
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < anzahl; i++) {
+      const x = (i * 137) % L.FIELD.w;
+      const y = (i * 71) % 250;
+      const gr = i % 7 === 0 ? 3 : 2;                  // ein paar helle dazwischen
+      ctx.fillRect(x, y, gr, gr);
+    }
+  });
 }
 
-/** Bludenz: Hochgebirge in drei Staffeln, davor die Schokoladefabrik. */
+/** Der Mond ueber dem Raetikon -- nur in Bludenz, nur dort ist es Nacht. */
+function mond() {
+  mitDeckkraft(0.15, () => {
+    ctx.fillStyle = '#cfe0ff';
+    ctx.beginPath();
+    ctx.arc(792, 100, 66, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = '#f1f5ff';
+  ctx.beginPath();
+  ctx.arc(792, 100, 36, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(176,195,228,0.55)';            // zwei Krater
+  ctx.beginPath();
+  ctx.arc(781, 91, 9, 0, Math.PI * 2);
+  ctx.arc(802, 111, 6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Bludenz: Zimba vorn, Schesaplana und Raetikon dahinter, Mond, Fabrik. */
 function kulisseBludenz(s) {
-  bergZug(s * 0.05, 880, 470, RAETIKON, '#1b2b4d', true);
-  bergZug(s * 0.12, 740, 480, ZIMBA, '#263a62', true);
+  mond();
+  bergZug(s * 0.04, 640, 470, RAETIKON, '#0d1830', true);
+  bergZug(s * 0.09, 600, 484, SCHESAPLANA, '#15223f', true);
+  kachel(s * 0.16, 620, (x0) => zimba(x0 + 290, 492));
   kachel(s * 0.26, 520, (x0) => {
-    ctx.fillStyle = '#14223c';
+    ctx.fillStyle = '#0b1526';                         // Vordergrundhuegel
     ctx.beginPath();
     ctx.moveTo(x0, 500);
-    ctx.quadraticCurveTo(x0 + 130, 420, x0 + 260, 490);
-    ctx.quadraticCurveTo(x0 + 400, 430, x0 + 520, 500);
+    ctx.quadraticCurveTo(x0 + 130, 426, x0 + 260, 492);
+    ctx.quadraticCurveTo(x0 + 400, 436, x0 + 520, 500);
     ctx.closePath();
     ctx.fill();
-    tanne(x0 + 70, 480, 54, '#0f1b31');
-    tanne(x0 + 330, 470, 62, '#0f1b31');
-    schokoladefabrik(x0 + 190, 478);
+    tanne(x0 + 70, 480, 54, '#07101f');
+    tanne(x0 + 330, 470, 62, '#07101f');
+    schokoladefabrik(x0 + 196, 482);
   });
 }
 
-/** Die Schokoladefabrik in Bludenz -- Muhdolfs Heimat. */
+/**
+ * Die Zimba, das "Vorarlberger Matterhorn": eine spitze Pyramide mit heller
+ * Sonnseite und Firnhaube. Sie ist 300 Einheiten hoch und damit die groesste
+ * Form der Etappe -- wer sie einmal gesehen hat, verwechselt sie nicht.
+ */
+function zimba(x, basisY) {
+  const h = 300;
+  ctx.fillStyle = '#1d2a48';                           // Schattseite
+  ctx.beginPath();
+  ctx.moveTo(x - 150, basisY);
+  ctx.lineTo(x - 28, basisY - h * 0.7);
+  ctx.lineTo(x, basisY - h);
+  ctx.lineTo(x + 36, basisY - h * 0.58);
+  ctx.lineTo(x + 170, basisY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#2a3a60';                           // Sonnseite, gibt die Kante
+  ctx.beginPath();
+  ctx.moveTo(x, basisY - h);
+  ctx.lineTo(x + 36, basisY - h * 0.58);
+  ctx.lineTo(x + 170, basisY);
+  ctx.lineTo(x + 8, basisY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(226,238,255,0.9)';             // Firnhaube
+  ctx.beginPath();
+  ctx.moveTo(x, basisY - h);
+  ctx.lineTo(x - 22, basisY - h * 0.78);
+  ctx.lineTo(x - 7, basisY - h * 0.8);
+  ctx.lineTo(x + 7, basisY - h * 0.74);
+  ctx.lineTo(x + 20, basisY - h * 0.79);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** Die Schokoladefabrik in Bludenz -- Muhdolfs Heimat, klein und beiseite. */
 function schokoladefabrik(x, basisY) {
-  ctx.fillStyle = '#243a60';
+  ctx.fillStyle = '#16233c';
   ctx.fillRect(x, basisY - 34, 76, 34);
-  ctx.fillRect(x + 54, basisY - 62, 14, 28);          // Schornstein
+  ctx.fillRect(x + 54, basisY - 62, 14, 28);           // Schornstein
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   for (let i = 0; i < 4; i++) ctx.fillRect(x + 8 + i * 16, basisY - 26, 8, 8);
-  ctx.globalAlpha = 0.35;                              // Rauchfahne
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(x + 61, basisY - 72, 9, 0, Math.PI * 2);
-  ctx.arc(x + 70, basisY - 86, 12, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
+  mitDeckkraft(0.35, () => {                           // Rauchfahne
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x + 61, basisY - 72, 9, 0, Math.PI * 2);
+    ctx.arc(x + 70, basisY - 86, 12, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
-/** Feldkirch: Schattenburg auf dem Huegel, Katzenturm, Altstadtdaecher. */
+/** Feldkirch: Schattenburg gross auf dem Huegel, Katzenturm, warme Fenster. */
 function kulisseFeldkirch(s) {
-  bergZug(s * 0.05, 760, 478, HUEGEL, '#1e2e52', true);
-  kachel(s * 0.12, 700, (x0) => {
-    ctx.fillStyle = '#2a3c63';
-    ctx.beginPath();                                   // Burghuegel
-    ctx.moveTo(x0 + 60, 486);
-    ctx.quadraticCurveTo(x0 + 190, 380, x0 + 330, 486);
+  bergZug(s * 0.04, 620, 476, HUEGEL, '#352552', true);
+  kachel(s * 0.1, 640, (x0) => {
+    ctx.fillStyle = '#473263';                         // Burghuegel
+    ctx.beginPath();
+    ctx.moveTo(x0 + 30, 492);
+    ctx.quadraticCurveTo(x0 + 225, 368, x0 + 420, 492);
     ctx.closePath();
     ctx.fill();
-    // Schattenburg: breiter Bau mit hohem Bergfried
-    ctx.fillStyle = '#33497a';
-    ctx.fillRect(x0 + 140, 404, 110, 54);
-    turm(x0 + 196, 404, 32, 62, '#33497a', 'spitz');
-    turm(x0 + 148, 404, 20, 34, '#33497a', 'zinnen');
-    // Katzenturm, der dicke Rundturm
-    turm(x0 + 470, 486, 40, 86, '#2f4371', 'zinnen');
+    schattenburg(x0 + 150, 438);
+    // Der Katzenturm: dick, niedrig, runde Kuppe -- das Gegenteil des Bergfrieds.
+    // Der Schneesaum liegt zuerst und etwas groesser dahinter; so hat die
+    // Kuppe eine helle Kante, egal welcher Himmelston gerade dahinter steht.
+    ctx.fillStyle = 'rgba(236,228,250,0.85)';
+    ctx.beginPath();
+    ctx.ellipse(x0 + 510, 372, 48, 24, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    turm(x0 + 470, 490, 80, 118, '#5e4a81', 'rund');
+    ctx.fillStyle = 'rgba(255,206,128,0.75)';
+    ctx.fillRect(x0 + 505, 404, 11, 15);
   });
-  dachzeile(s * 0.26, 520, 498, '#192843');
+  dachzeile(s * 0.22, 520, 498, '#1d1430', true);
 }
 
-/** Dornbirn: Karren mit Seilbahn, Rotes Haus am Marktplatz. */
+/**
+ * Die Schattenburg: breiter Palas mit Satteldach, darueber der wehrhafte
+ * Bergfried mit eigenem Satteldach, links die Ringmauer mit Zinnen.
+ * Vom Huegelfuss bis zur Bergfriedspitze 232 Einheiten.
+ */
+function schattenburg(x, basisY) {
+  const mauer = '#6a5590';
+  const dach = '#4a2238';
+  ctx.fillStyle = mauer;                               // Ringmauer mit Zinnen
+  ctx.fillRect(x - 56, basisY - 46, 60, 46);
+  for (let i = 0; i < 4; i++) ctx.fillRect(x - 54 + i * 15, basisY - 54, 9, 9);
+  ctx.fillStyle = mauer;                               // Palas
+  ctx.fillRect(x, basisY - 92, 156, 92);
+  ctx.fillStyle = dach;
+  ctx.beginPath();
+  ctx.moveTo(x - 9, basisY - 92);
+  ctx.lineTo(x + 78, basisY - 140);
+  ctx.lineTo(x + 165, basisY - 92);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#77619c';                           // Bergfried
+  ctx.fillRect(x + 104, basisY - 184, 52, 92);
+  ctx.fillStyle = dach;
+  ctx.beginPath();
+  ctx.moveTo(x + 95, basisY - 184);
+  ctx.lineTo(x + 130, basisY - 232);
+  ctx.lineTo(x + 165, basisY - 184);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,206,128,0.8)';             // erleuchtete Fenster
+  for (let i = 0; i < 4; i++) ctx.fillRect(x + 18 + i * 30, basisY - 64, 10, 15);
+  ctx.fillRect(x + 124, basisY - 158, 9, 13);
+}
+
+/** Dornbirn: Sonne tief am Horizont, das Rote Haus, Karren mit Seilbahn. */
 function kulisseDornbirn(s) {
-  bergZug(s * 0.05, 820, 482, HUEGEL, '#22335a', false);
-  kachel(s * 0.12, 760, (x0) => {
-    ctx.fillStyle = '#2b3f6b';
-    ctx.beginPath();                                   // Karren
-    ctx.moveTo(x0 + 420, 490);
-    ctx.quadraticCurveTo(x0 + 560, 350, x0 + 720, 490);
+  sonne();
+  bergZug(s * 0.04, 620, 482, HUEGEL, '#8a4a5c', false);
+  kachel(s * 0.1, 640, (x0) => {
+    ctx.fillStyle = '#6b3a4e';                         // der Karren
+    ctx.beginPath();
+    ctx.moveTo(x0 + 200, 492);
+    ctx.quadraticCurveTo(x0 + 410, 322, x0 + 620, 492);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)';        // Seilbahntrasse
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x0 + 300, 470);
-    ctx.lineTo(x0 + 566, 362);
-    ctx.stroke();
-    rotesHaus(x0 + 120, 492);
+    karrenseilbahn(x0);
   });
-  dachzeile(s * 0.26, 498, 500, '#1a2b47');
+  dachzeile(s * 0.18, 500, 500, '#24142c', false);
+  // Das Rote Haus steht in der vordersten Staffel: so verdeckt es keine
+  // Dachzeile, und der Treppengiebel bleibt ganz zu sehen.
+  kachel(s * 0.26, 620, (x0) => rotesHaus(x0 + 60, 500));
 }
 
-/** Das Rote Haus: Rheintalhaus mit rot-weissem Fachwerk und Walmdach. */
+/** Die Sonnenscheibe, tief am Horizont, hinter allen Bergen. */
+function sonne() {
+  mitDeckkraft(0.22, () => {
+    ctx.fillStyle = '#ffd9a0';
+    ctx.beginPath();
+    ctx.arc(700, 428, 102, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  mitDeckkraft(0.4, () => {
+    ctx.fillStyle = '#ffe3b4';
+    ctx.beginPath();
+    ctx.arc(700, 428, 64, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = '#ffeec9';
+  ctx.beginPath();
+  ctx.arc(700, 428, 40, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/**
+ * Das Rote Haus: deutlich rot, mit dem Treppengiebel, an dem man es erkennt,
+ * und weissem Fachwerk. 183 Einheiten hoch. Die Fenster sind absichtlich
+ * weiss und nicht warmgelb -- rot mit gelb ist das Geschenk, und das soll
+ * eindeutig bleiben.
+ */
 function rotesHaus(x, basisY) {
-  ctx.fillStyle = '#8e2b2b';
-  ctx.fillRect(x, basisY - 78, 92, 78);
-  ctx.beginPath();
-  ctx.moveTo(x - 6, basisY - 78);
-  ctx.lineTo(x + 46, basisY - 112);
-  ctx.lineTo(x + 98, basisY - 78);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)';          // Fachwerk
-  ctx.lineWidth = 2;
-  for (let i = 1; i < 4; i++) {
-    ctx.beginPath();
-    ctx.moveTo(x, basisY - 78 + i * 19);
-    ctx.lineTo(x + 92, basisY - 78 + i * 19);
-    ctx.stroke();
+  ctx.fillStyle = '#b5342c';
+  ctx.fillRect(x, basisY - 108, 124, 108);
+  for (let i = 0; i < 5; i++) {                        // Treppengiebel
+    ctx.fillRect(x + i * 13, basisY - 123 - i * 15, 124 - i * 26, 15);
   }
-  ctx.fillStyle = 'rgba(255,230,160,0.85)';            // erleuchtete Fenster
-  for (let i = 0; i < 3; i++) ctx.fillRect(x + 12 + i * 28, basisY - 34, 12, 14);
+  ctx.strokeStyle = 'rgba(248,250,255,0.8)';           // Fachwerk
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  for (let i = 1; i < 4; i++) {
+    ctx.moveTo(x, basisY - 108 + i * 27);
+    ctx.lineTo(x + 124, basisY - 108 + i * 27);
+  }
+  ctx.moveTo(x + 41, basisY - 108);
+  ctx.lineTo(x + 41, basisY);
+  ctx.moveTo(x + 83, basisY - 108);
+  ctx.lineTo(x + 83, basisY);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(240,246,255,0.85)';            // Fenster
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(x + 12 + i * 42, basisY - 92, 17, 19);
+    ctx.fillRect(x + 12 + i * 42, basisY - 38, 17, 19);
+  }
 }
 
-/** Bregenz: Pfaender, Oberstadt mit dem Martinsturm, Seebuehne auf dem Bodensee. */
+/** Die Karrenseilbahn: gerodete Trasse den Hang hinauf, Kabine unterwegs. */
+function karrenseilbahn(x0) {
+  const ax = x0 + 238, ay = 476, bx = x0 + 404, by = 404;
+  ctx.fillStyle = '#7d4a5e';                           // die Trasse im Wald
+  ctx.beginPath();
+  ctx.moveTo(ax - 8, ay);
+  ctx.lineTo(bx - 7, by);
+  ctx.lineTo(bx + 7, by);
+  ctx.lineTo(ax + 8, ay);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,228,198,0.6)';           // das Seil
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay - 10);
+  ctx.lineTo(bx, by - 12);
+  ctx.stroke();
+  ctx.fillStyle = '#2b1730';
+  for (const f of [0.3, 0.66]) {                       // zwei Stuetzen
+    const px = ax + (bx - ax) * f, py = ay + (by - ay) * f;
+    ctx.fillRect(px - 2, py - 24, 4, 24);
+  }
+  const kx = ax + (bx - ax) * 0.5, ky = ay + (by - ay) * 0.5 - 11;
+  ctx.fillRect(kx - 13, ky, 26, 18);                   // die Kabine
+  ctx.fillStyle = 'rgba(255,238,214,0.75)';
+  ctx.fillRect(kx - 9, ky + 4, 18, 9);
+}
+
+/** Bregenz: Sonnenglanz ueber dem See, Pfaender, Martinsturm, Seebuehne. */
 function kulisseBregenz(s) {
-  kachel(s * 0.05, 900, (x0) => {
-    ctx.fillStyle = '#26395f';
-    ctx.beginPath();                                   // Pfaender
-    ctx.moveTo(x0, 486);
-    ctx.quadraticCurveTo(x0 + 220, 330, x0 + 470, 486);
+  seeglanz();
+  kachel(s * 0.04, 700, (x0) => {
+    ctx.fillStyle = '#4b7f9e';                         // der Pfaender, rund
+    ctx.beginPath();
+    ctx.moveTo(x0 - 20, 488);
+    ctx.bezierCurveTo(x0 + 110, 302, x0 + 330, 302, x0 + 460, 488);
     ctx.closePath();
     ctx.fill();
   });
-  dachzeile(s * 0.12, 420, 488, '#243a63');            // Oberstadt
-  kachel(s * 0.12, 820, (x0) => {
-    // Der Martinsturm mit seiner Zwiebelhaube
-    ctx.fillStyle = '#2f4673';
-    ctx.fillRect(x0 + 120, 440, 90, 48);
-    turm(x0 + 150, 440, 34, 54, '#36507f', 'zwiebel');
-    seebuehne(x0 + 520, 492);
+  dachzeile(s * 0.1, 560, 490, '#2f6180', false);      // die Oberstadt
+  kachel(s * 0.12, 620, (x0) => {
+    martinsturm(x0 + 150, 488);
+    seebuehne(x0 + 410, 498);
   });
 }
 
-/** Die Seebuehne: Podest im Wasser mit Kulissenbogen und Lichterkette. */
-function seebuehne(x, basisY) {
-  ctx.fillStyle = '#1f3557';
-  ctx.fillRect(x, basisY - 14, 150, 14);
+/** Der Glanz der Morgensonne ueber dem Bodensee, tief am Horizont. */
+function seeglanz() {
+  mitDeckkraft(0.3, () => {
+    ctx.fillStyle = '#ffeccb';
+    ctx.beginPath();
+    ctx.ellipse(726, 468, 212, 64, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  mitDeckkraft(0.55, () => {
+    ctx.fillStyle = '#fff3dc';
+    ctx.beginPath();
+    ctx.arc(726, 464, 34, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+/**
+ * Der Martinsturm: achteckiger Schaft, auskragende Galerie, darueber die
+ * Zwiebelhaube mit Laterne und Knauf. Die Haube ist seine unverwechselbare
+ * Form, darum ist sie gross -- der ganze Turm misst 245 Einheiten.
+ */
+function martinsturm(x, basisY) {
+  const stein = '#2c5a7e', haube = '#1d4260';
+  const b = 58, h = 126;
+  const kranz = basisY - h - 12;                       // Oberkante der Galerie
+  ctx.fillStyle = stein;
+  ctx.fillRect(x - b / 2, basisY - h, b, h);
+  ctx.fillRect(x - b / 2 - 9, kranz, b + 18, 12);
+  ctx.fillStyle = haube;                               // Zwiebelhaube
   ctx.beginPath();
-  ctx.moveTo(x + 20, basisY - 14);
-  ctx.quadraticCurveTo(x + 75, basisY - 96, x + 130, basisY - 14);
+  ctx.moveTo(x - b / 2 - 2, kranz);
+  ctx.bezierCurveTo(x - 40, kranz - 50, x - 13, kranz - 48, x - 10, kranz - 74);
+  ctx.quadraticCurveTo(x, kranz - 92, x + 10, kranz - 74);
+  ctx.bezierCurveTo(x + 13, kranz - 48, x + 40, kranz - 50, x + b / 2 + 2, kranz);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = 'rgba(255,214,120,0.9)';             // Lichter
-  for (let i = 0; i < 7; i++) {
+  ctx.fillRect(x - 5, kranz - 96, 10, 14);             // Laterne
+  ctx.beginPath();
+  ctx.arc(x, kranz - 102, 5, 0, Math.PI * 2);          // Knauf
+  ctx.fill();
+  ctx.fillStyle = 'rgba(244,250,255,0.9)';             // Turmuhr
+  ctx.beginPath();
+  ctx.arc(x, basisY - h + 32, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = haube;
+  for (let i = 0; i < 2; i++) ctx.fillRect(x - 14 + i * 21, basisY - h + 62, 8, 18);
+}
+
+/** Die Seebuehne: Podest im Wasser, Kulissenbogen, Lichterkette. */
+function seebuehne(x, basisY) {
+  ctx.fillStyle = '#1f4e6d';
+  ctx.fillRect(x, basisY - 16, 190, 16);
+  ctx.beginPath();                                     // Kulissenbogen
+  ctx.moveTo(x + 24, basisY - 16);
+  ctx.quadraticCurveTo(x + 95, basisY - 136, x + 166, basisY - 16);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,224,150,0.85)';          // Lichterkette
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(x + 10, basisY - 26);
+  ctx.quadraticCurveTo(x + 95, basisY - 46, x + 180, basisY - 26);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,224,150,0.9)';
+  for (let i = 0; i < 9; i++) {
+    const f = i / 8;
+    const lx = x + 10 + f * 170;
+    const ly = basisY - 26 - Math.sin(f * Math.PI) * 10;
     ctx.beginPath();
-    ctx.arc(x + 26 + i * 16, basisY - 30 - Math.sin(i * 0.5) * 22, 2.4, 0, Math.PI * 2);
+    ctx.arc(lx, ly, 2.6, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
-/** Boden: Schnee in den ersten drei Etappen, Bodensee in Bregenz. */
+// Boden je Etappe: [Schnee, Schatten im Schnee, Dunkles darin].
+// Der Schnee nimmt den Grundton des Himmels an -- blau in der Bergnacht,
+// violett im Daemmerlicht, rosig im Morgenrot.
+const SCHNEE = [
+  ['#dfe8f8', '#b9c6e2', '#16233c'],   // Bludenz: Mondschnee, dunkle Felsen
+  ['#e5ddf2', '#c3b4d9', '#2a1f3f'],   // Feldkirch: Gassen im Daemmerlicht
+  ['#fbe6dd', '#edc8ba', '#53303f'],   // Dornbirn: Wiese im Morgenrot
+];
+
+/**
+ * Boden: jede Etappe ein eigener. Tiefer Schnee mit Felsen in Bludenz,
+ * verschneite Altstadtgassen in Feldkirch, verschneite Wiese mit Zaun und
+ * Obstbaeumen in Dornbirn, der Bodensee in Bregenz.
+ */
 function boden(stage, s) {
   const y = L.FIELD.groundY;
-  const h = L.FIELD.h - y;
   if (stage === 3) {
-    const g = ctx.createLinearGradient(0, y, 0, L.FIELD.h);
-    g.addColorStop(0, '#2f6a94');
-    g.addColorStop(1, '#122d46');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, y, L.FIELD.w, h);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1.6;
-    kachel(s * 0.55, 130, (x) => {
+    bodensee(s, y);
+    return;
+  }
+  const [hell, mittel, dunkel] = SCHNEE[stage];
+  ctx.fillStyle = hell;
+  ctx.fillRect(0, y, L.FIELD.w, L.FIELD.h - y);
+  ctx.fillStyle = mittel;
+  kachel(s * 0.9, 170, (x) => {
+    ctx.beginPath();
+    ctx.ellipse(x + 85, y + 10, 76, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  if (stage === 0) {
+    ctx.fillStyle = dunkel;                            // Felsen im tiefen Schnee
+    kachel(s * 0.9, 250, (x) => {
       ctx.beginPath();
-      ctx.moveTo(x, y + 13);
-      ctx.quadraticCurveTo(x + 32, y + 6, x + 65, y + 13);
-      ctx.quadraticCurveTo(x + 98, y + 20, x + 130, y + 13);
+      ctx.moveTo(x + 22, y + 18);
+      ctx.lineTo(x + 48, y - 8);
+      ctx.lineTo(x + 74, y + 18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + 152, y + 24);
+      ctx.lineTo(x + 174, y + 4);
+      ctx.lineTo(x + 200, y + 24);
+      ctx.closePath();
+      ctx.fill();
+    });
+  } else if (stage === 1) {
+    ctx.fillStyle = dunkel;                            // Kante der Gasse
+    ctx.fillRect(0, y + 3, L.FIELD.w, 3);
+    ctx.strokeStyle = 'rgba(62,46,92,0.45)';           // Pflasterfugen
+    ctx.lineWidth = 1.4;
+    kachel(s * 0.9, 120, (x) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y + 36);
+      ctx.lineTo(x + 42, y + 8);
+      ctx.moveTo(x + 62, y + 36);
+      ctx.lineTo(x + 104, y + 8);
       ctx.stroke();
     });
   } else {
-    ctx.fillStyle = '#e9f1fb';
-    ctx.fillRect(0, y, L.FIELD.w, h);
-    ctx.fillStyle = '#d2deef';
-    kachel(s * 0.9, 170, (x) => {
+    kachel(s * 0.9, 270, (x) => {
+      ctx.strokeStyle = dunkel;                        // Wiesenzaun
+      ctx.lineWidth = 2.2;                             // obstbaum setzt sie um
       ctx.beginPath();
-      ctx.ellipse(x + 85, y + 8, 76, 11, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(x + 10, y - 5);
+      ctx.lineTo(x + 150, y - 5);
+      ctx.moveTo(x + 10, y + 7);
+      ctx.lineTo(x + 150, y + 7);
+      for (let i = 0; i < 5; i++) {
+        ctx.moveTo(x + 14 + i * 34, y - 13);
+        ctx.lineTo(x + 14 + i * 34, y + 14);
+      }
+      ctx.stroke();
+      obstbaum(x + 212, y + 12, dunkel);
     });
   }
+}
+
+/** Ein kahler Obstbaum, wie sie im Rheintal auf den Wiesen stehen. */
+function obstbaum(x, basisY, farbe) {
+  ctx.strokeStyle = farbe;
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(x, basisY);
+  ctx.lineTo(x, basisY - 28);
+  ctx.moveTo(x, basisY - 18); ctx.lineTo(x - 12, basisY - 33);
+  ctx.moveTo(x, basisY - 20); ctx.lineTo(x + 12, basisY - 35);
+  ctx.moveTo(x, basisY - 28); ctx.lineTo(x - 6, basisY - 42);
+  ctx.moveTo(x, basisY - 28); ctx.lineTo(x + 7, basisY - 41);
+  ctx.stroke();
+}
+
+/** Der Bodensee, mit der Spiegelung der Morgensonne. */
+function bodensee(s, y) {
+  const g = ctx.createLinearGradient(0, y, 0, L.FIELD.h);
+  g.addColorStop(0, '#5fa2c2');
+  g.addColorStop(1, '#17415e');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, y, L.FIELD.w, L.FIELD.h - y);
+  // Die Spiegelung steht still: sie gehoert zur Sonne, nicht zum Wasser.
+  mitDeckkraft(0.5, () => {
+    ctx.fillStyle = '#ffeccb';
+    for (let i = 0; i < 7; i++) {
+      const b = 72 - i * 9;
+      ctx.fillRect(726 - b / 2, y + 2 + i * 5.5, b, 2.8);
+    }
+  });
+  ctx.strokeStyle = 'rgba(255,255,255,0.32)';          // Wellen
+  ctx.lineWidth = 1.6;
+  kachel(s * 0.55, 130, (x) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y + 16);
+    ctx.quadraticCurveTo(x + 32, y + 9, x + 65, y + 16);
+    ctx.quadraticCurveTo(x + 98, y + 23, x + 130, y + 16);
+    ctx.stroke();
+  });
 }
 
 // --- Hindernisse und Geschenke ------------------------------------------
@@ -1078,7 +1397,10 @@ function hindernis(o, s) {
   if (x < -140 || x > L.FIELD.w + 140) return;
   const b = o.w;
   if (o.kind === 'felszacken') {
-    ctx.fillStyle = '#121f38';
+    // Mondbeschienener Fels, heller als der Nachthimmel dahinter. Die alte
+    // Farbe #121f38 war dem neuen Bludenz-Himmel (#121f3d in der Feldmitte)
+    // bis auf einen Zahlenwert gleich -- die Zacken waeren unsichtbar gewesen.
+    ctx.fillStyle = '#4a5b7e';
     ctx.beginPath();
     ctx.moveTo(x - b / 2, L.FIELD.groundY);
     ctx.lineTo(x - b * 0.18, L.FIELD.groundY - o.h);
@@ -1095,7 +1417,9 @@ function hindernis(o, s) {
     ctx.closePath();
     ctx.fill();
   } else if (o.kind === 'burgturm') {
-    turm(x - b / 2, L.FIELD.groundY, b, o.h, '#1d2f52', 'zinnen');
+    // Dunkle Silhouette gegen den Daemmerungssaum: das alte #1d2f52 lag genau
+    // auf der Helligkeit des violetten Himmels in Turmhoehe.
+    turm(x - b / 2, L.FIELD.groundY, b, o.h, '#15102a', 'zinnen');
     ctx.fillStyle = 'rgba(255,220,150,0.8)';
     for (let i = 1; i * 46 < o.h - 20; i++) ctx.fillRect(x - 5, L.FIELD.groundY - i * 46, 10, 13);
   } else if (o.kind === 'hausdach') {
@@ -1121,7 +1445,9 @@ function hindernis(o, s) {
     ctx.moveTo(x, 0);
     ctx.lineTo(x, o.h - 28);
     ctx.stroke();
-    ctx.fillStyle = o.kind === 'gondel' ? '#c0392b' : '#2d6a8f';
+    // Die Seilbahnkabine war mit #2d6a8f so hell wie der Sonnenaufgangshimmel
+    // in ihrer Hoehe. Dunkel gegen das Morgenrot ist sie auch das Richtige.
+    ctx.fillStyle = o.kind === 'gondel' ? '#c0392b' : '#17142b';
     ctx.fillRect(x - b / 2, o.h - 30, b, 30);
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillRect(x - b / 2 + 5, o.h - 24, b - 10, 13);
